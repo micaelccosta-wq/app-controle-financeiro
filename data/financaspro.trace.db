@@ -1,0 +1,18 @@
+2025-11-28 21:16:01.120133Z jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "create table budget (id varchar(255) not null, amount float(53), category_id varchar(255), [*]month integer, year integer, primary key (id))"; expected "identifier"; SQL statement:
+create table budget (id varchar(255) not null, amount float(53), category_id varchar(255), month integer, year integer, primary key (id)) [42001-224]
+2025-11-28 21:34:29.676772Z jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "create table budget (id varchar(255) not null, amount float(53), category_id varchar(255), [*]month integer, year integer, primary key (id))"; expected "identifier"; SQL statement:
+create table budget (id varchar(255) not null, amount float(53), category_id varchar(255), month integer, year integer, primary key (id)) [42001-224]
+2025-11-28 21:35:18.808618Z jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select b1_0.id,b1_0.amount,b1_0.category_id,b1_0.[*]month,b1_0.year from budget b1_0"; expected "identifier"; SQL statement:
+select b1_0.id,b1_0.amount,b1_0.category_id,b1_0.month,b1_0.year from budget b1_0 [42001-224]
+2025-11-28 21:35:18.998687Z jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select b1_0.id,b1_0.amount,b1_0.category_id,b1_0.[*]month,b1_0.year from budget b1_0"; expected "identifier"; SQL statement:
+select b1_0.id,b1_0.amount,b1_0.category_id,b1_0.month,b1_0.year from budget b1_0 [42001-224]
+2025-11-28 21:41:08.235975Z jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select b1_0.id,b1_0.amount,b1_0.category_id,b1_0.[*]month,b1_0.year from budget b1_0"; expected "identifier"; SQL statement:
+select b1_0.id,b1_0.amount,b1_0.category_id,b1_0.month,b1_0.year from budget b1_0 [42001-224]
+2025-11-28 21:41:08.279816Z jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select b1_0.id,b1_0.amount,b1_0.category_id,b1_0.[*]month,b1_0.year from budget b1_0"; expected "identifier"; SQL statement:
+select b1_0.id,b1_0.amount,b1_0.category_id,b1_0.month,b1_0.year from budget b1_0 [42001-224]
