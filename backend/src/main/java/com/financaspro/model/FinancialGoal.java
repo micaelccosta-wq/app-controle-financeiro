@@ -14,6 +14,8 @@ public class FinancialGoal {
     @Id
     private String id;
 
+    private String userId;
+
     private String accountId;
 
     private Double targetAmount;

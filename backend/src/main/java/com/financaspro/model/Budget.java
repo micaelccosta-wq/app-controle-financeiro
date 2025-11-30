@@ -14,6 +14,8 @@ public class Budget {
     @Id
     private String id;
 
+    private String userId;
+
     private String categoryId;
 
     private Integer month; // 0-11

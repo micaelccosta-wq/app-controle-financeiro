@@ -2,6 +2,7 @@ package com.financaspro.service;
 
 import com.financaspro.model.Transaction;
 import com.financaspro.repository.TransactionRepository;
+import com.financaspro.util.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,23 +15,36 @@ public class TransactionService {
     @Autowired
     private TransactionRepository transactionRepository;
 
+    @Autowired
+    private UserContext userContext;
+
     public List<Transaction> findAll() {
-        return transactionRepository.findAll();
+        return transactionRepository.findAllByUserId(userContext.getCurrentUserId());
     }
 
     public Optional<Transaction> findById(String id) {
-        return transactionRepository.findById(id);
+        Optional<Transaction> transaction = transactionRepository.findById(id);
+        if (transaction.isPresent() && !transaction.get().getUserId().equals(userContext.getCurrentUserId())) {
+            return Optional.empty();
+        }
+        return transaction;
     }
 
     public Transaction save(Transaction transaction) {
+        transaction.setUserId(userContext.getCurrentUserId());
         return transactionRepository.save(transaction);
     }
 
     public List<Transaction> saveAll(List<Transaction> transactions) {
+        String userId = userContext.getCurrentUserId();
+        transactions.forEach(t -> t.setUserId(userId));
         return transactionRepository.saveAll(transactions);
     }
 
     public void deleteById(String id) {
-        transactionRepository.deleteById(id);
+        Optional<Transaction> transaction = findById(id);
+        if (transaction.isPresent()) {
+            transactionRepository.deleteById(id);
+        }
     }
 }

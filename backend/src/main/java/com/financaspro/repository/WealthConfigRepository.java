@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface WealthConfigRepository extends JpaRepository<WealthConfig, Long> {
+    java.util.Optional<WealthConfig> findByUserId(String userId);
 }

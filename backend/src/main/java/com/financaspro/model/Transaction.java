@@ -15,6 +15,8 @@ public class Transaction {
     @Id
     private String id;
 
+    private String userId;
+
     private String description;
     private Double amount;
     private String date; // ISO Date string YYYY-MM-DD

@@ -2,6 +2,7 @@ package com.financaspro.service;
 
 import com.financaspro.model.Category;
 import com.financaspro.repository.CategoryRepository;
+import com.financaspro.util.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,23 +15,36 @@ public class CategoryService {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private UserContext userContext;
+
     public List<Category> findAll() {
-        return categoryRepository.findAll();
+        return categoryRepository.findAllByUserId(userContext.getCurrentUserId());
     }
 
     public Optional<Category> findById(String id) {
-        return categoryRepository.findById(id);
+        Optional<Category> category = categoryRepository.findById(id);
+        if (category.isPresent() && !category.get().getUserId().equals(userContext.getCurrentUserId())) {
+            return Optional.empty();
+        }
+        return category;
     }
 
     public Category save(Category category) {
+        category.setUserId(userContext.getCurrentUserId());
         return categoryRepository.save(category);
     }
 
     public List<Category> saveAll(List<Category> categories) {
+        String userId = userContext.getCurrentUserId();
+        categories.forEach(c -> c.setUserId(userId));
         return categoryRepository.saveAll(categories);
     }
 
     public void deleteById(String id) {
-        categoryRepository.deleteById(id);
+        Optional<Category> category = findById(id);
+        if (category.isPresent()) {
+            categoryRepository.deleteById(id);
+        }
     }
 }

@@ -13,7 +13,9 @@ public class WealthConfig {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // Singleton config, but needs ID for JPA
+    private Long id; // Singleton config per user
+
+    private String userId;
 
     private Double passiveIncomeGoal;
 }

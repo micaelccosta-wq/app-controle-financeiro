@@ -21,7 +21,16 @@ import { transactionService, categoryService, accountService, budgetService, goa
 import { Transaction, Category, TransactionType, CategorySubtype, Budget, Account, AccountType, BackupData, FinancialGoal, WealthConfig, GoogleDriveConfig } from './types';
 import { LayoutDashboard, Tags, PieChart, Landmark, CreditCard, BarChart3, RotateCcw, Save, TrendingUp, Cloud } from 'lucide-react';
 
+import { useAuth } from './contexts/AuthContext';
+import { Login } from './pages/Login';
+
 const App: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
   const [activeTab, setActiveTab] = useState<'transactions' | 'categories' | 'budget' | 'accounts' | 'cards' | 'reports' | 'wealth'>('transactions');
 
   // --- STORAGE KEYS ---
