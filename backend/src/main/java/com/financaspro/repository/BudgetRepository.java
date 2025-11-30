@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BudgetRepository extends JpaRepository<Budget, String> {
     java.util.List<Budget> findAllByUserId(String userId);
+
+    boolean existsByCategoryIdAndUserId(String categoryId, String userId);
 }

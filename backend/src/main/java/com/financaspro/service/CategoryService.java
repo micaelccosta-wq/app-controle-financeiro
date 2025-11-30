@@ -41,9 +41,25 @@ public class CategoryService {
         return categoryRepository.saveAll(categories);
     }
 
+    @Autowired
+    private com.financaspro.repository.TransactionRepository transactionRepository;
+
+    @Autowired
+    private com.financaspro.repository.BudgetRepository budgetRepository;
+
     public void deleteById(String id) {
         Optional<Category> category = findById(id);
         if (category.isPresent()) {
+            String userId = userContext.getCurrentUserId();
+            String categoryName = category.get().getName();
+
+            if (transactionRepository.existsByCategoryAndUserId(categoryName, userId)) {
+                throw new RuntimeException("Cannot delete category used in transactions");
+            }
+            if (budgetRepository.existsByCategoryIdAndUserId(id, userId)) {
+                throw new RuntimeException("Cannot delete category used in budgets");
+            }
+
             categoryRepository.deleteById(id);
         }
     }
