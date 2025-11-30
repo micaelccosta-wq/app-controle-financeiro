@@ -38,6 +38,10 @@ export const transactionService = {
         const response = await api.put<Transaction>(`/transactions/${transaction.id}`, transaction);
         return response.data;
     },
+    updateBatch: async (transactions: Transaction[]) => {
+        const response = await api.put<Transaction[]>('/transactions/batch', transactions);
+        return response.data;
+    },
     delete: async (id: string) => {
         await api.delete(`/transactions/${id}`);
     }

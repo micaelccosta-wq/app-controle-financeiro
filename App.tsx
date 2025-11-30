@@ -336,7 +336,7 @@ const App: React.FC = () => {
       const transactionsToUpdate = transactions.filter(t => selectedIds.includes(t.id));
       const updatedTransactions = transactionsToUpdate.map(t => ({ ...t, isApplied: !t.isApplied }));
 
-      await Promise.all(updatedTransactions.map(t => transactionService.update(t)));
+      await transactionService.updateBatch(updatedTransactions);
 
       setTransactions(prev => prev.map(t => {
         if (selectedIds.includes(t.id)) {

@@ -37,8 +37,14 @@ public class TransactionController {
         return transactionService.saveAll(transactions);
     }
 
+    @PutMapping("/batch")
+    public List<Transaction> updateTransactions(@RequestBody List<Transaction> transactions) {
+        return transactionService.saveAll(transactions);
+    }
+
     @PutMapping("/{id}")
-    public ResponseEntity<Transaction> updateTransaction(@PathVariable String id, @RequestBody Transaction transaction) {
+    public ResponseEntity<Transaction> updateTransaction(@PathVariable String id,
+            @RequestBody Transaction transaction) {
         return transactionService.findById(id)
                 .map(existing -> {
                     transaction.setId(id);
