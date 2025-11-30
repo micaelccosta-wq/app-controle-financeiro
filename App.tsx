@@ -27,29 +27,13 @@ const App: React.FC = () => {
   // --- STORAGE KEYS ---
   // --- STORAGE KEYS REMOVED ---
 
-  // --- INITIAL DATA (Defaults) ---
-  const DEFAULT_ACCOUNTS: Account[] = [
-    { id: '1', name: 'Banco Principal', initialBalance: 1000, type: AccountType.BANK },
-    { id: '2', name: 'Nubank', initialBalance: 0, closingDay: 13, dueDay: 5, type: AccountType.CREDIT_CARD }
-  ];
-
-  const DEFAULT_CATEGORIES: Category[] = [
-    { id: '1', name: 'Supermercado', type: TransactionType.EXPENSE, subtype: CategorySubtype.VARIABLE, impactsBudget: true, icon: 'shopping-cart' },
-    { id: '2', name: 'Transporte', type: TransactionType.EXPENSE, subtype: CategorySubtype.VARIABLE, impactsBudget: true, icon: 'car' },
-    { id: '3', name: 'Moradia', type: TransactionType.EXPENSE, subtype: CategorySubtype.FIXED, impactsBudget: true, icon: 'home' },
-    { id: '4', name: 'Salário', type: TransactionType.INCOME, subtype: CategorySubtype.FIXED, impactsBudget: true, icon: 'dollar-sign' },
-    { id: '5', name: 'Lazer', type: TransactionType.EXPENSE, subtype: CategorySubtype.VARIABLE, impactsBudget: true, icon: 'music' },
-    { id: '6', name: 'Investimento', type: TransactionType.EXPENSE, subtype: CategorySubtype.FIXED, impactsBudget: false, icon: 'briefcase' },
-    { id: '7', name: 'Rendimentos', type: TransactionType.INCOME, subtype: CategorySubtype.VARIABLE, impactsBudget: false, icon: 'zap' },
-  ];
-
   // --- STATE INITIALIZATION WITH PERSISTENCE ---
 
   // --- STATE INITIALIZATION ---
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
-  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [wealthConfig, setWealthConfig] = useState<WealthConfig>({ passiveIncomeGoal: 0 });
@@ -82,7 +66,6 @@ const App: React.FC = () => {
 
       } catch (error) {
         console.error("Failed to load data from API", error);
-        // Fallback to defaults if API fails (or empty)
       }
     };
     loadData();
