@@ -26,6 +26,7 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     private TransactionType type;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isApplied")
     private boolean isApplied;
 
     @Column(length = 1000)
