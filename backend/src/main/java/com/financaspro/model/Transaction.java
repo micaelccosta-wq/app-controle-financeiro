@@ -27,17 +27,7 @@ public class Transaction {
     private TransactionType type;
 
     @com.fasterxml.jackson.annotation.JsonProperty("isApplied")
-    private boolean applied;
-
-    @com.fasterxml.jackson.annotation.JsonProperty("isApplied")
-    public boolean getIsApplied() {
-        return applied;
-    }
-
-    @com.fasterxml.jackson.annotation.JsonProperty("isApplied")
-    public void setIsApplied(boolean isApplied) {
-        this.applied = isApplied;
-    }
+    private Boolean isApplied;
 
     @Column(length = 1000)
     private String observations;
