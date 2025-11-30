@@ -215,22 +215,23 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                 }
               }
             }
-
-            if (splits.length > 0) {
-              finalCategory = 'Múltiplas Categorias';
-              // Optional: Validate if totalSplit matches amount. 
-              // For now, we trust the user or backend validation.
-              // But let's warn if significant difference? 
-              // const diff = Math.abs(amount - totalSplit);
-              // if (diff > 0.01) { error = `Soma das categorias (${totalSplit}) difere do valor total (${amount})`; isValid = false; }
-            }
           }
 
-          if (splits.length === 0) {
-            // Single Category Logic
+          if (splits.length === 1) {
+            // If only one "split" was found (e.g. "Category: Value"), treat it as a normal category
+            finalCategory = splits[0].categoryName;
+            splits = [];
+          } else if (splits.length > 0) {
+            finalCategory = 'Múltiplas Categorias';
+          }
+
+          if (splits.length === 0 && !finalCategory) {
+            // Single Category Logic (Plain text)
             if (rawCategory) {
-              const match = availableCategories.find(c => c.name.toLowerCase() === rawCategory.toLowerCase());
-              finalCategory = match ? match.name : '';
+              const cleanRaw = rawCategory.trim();
+              const match = availableCategories.find(c => c.name.toLowerCase() === cleanRaw.toLowerCase());
+              // If match found, use it (preserves correct casing). If not, use the raw text (allows new categories).
+              finalCategory = match ? match.name : cleanRaw;
             }
           }
 
