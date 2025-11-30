@@ -179,7 +179,10 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
           const description = cols[1]?.trim().replace(/"/g, '') || 'Sem descrição';
           const amount = parseNumber(cols[2]?.trim());
           const rawType = cols[3]?.trim().toUpperCase();
-          const rawCategory = cols[4]?.trim().replace(/"/g, '') || '';
+
+          // Reconstruct category from all remaining columns (in case it contains the delimiter)
+          // Example: "Moradia: 130,72; Reembolsos: 2000" might be split into ["Moradia: 130,72", " Reembolsos: 2000"]
+          const rawCategory = cols.slice(4).join(separator).trim().replace(/"/g, '') || '';
 
           let isValid = true;
           let error = '';
