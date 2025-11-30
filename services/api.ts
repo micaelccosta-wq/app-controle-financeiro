@@ -20,8 +20,11 @@ api.interceptors.request.use(config => {
 
 export const transactionService = {
     getAll: async () => {
-        const response = await api.get<Transaction[]>('/transactions');
-        return response.data;
+        const response = await api.get<any[]>('/transactions');
+        return response.data.map(t => ({
+            ...t,
+            isApplied: t.isApplied ?? t.applied
+        })) as Transaction[];
     },
     create: async (transaction: Transaction) => {
         const response = await api.post<Transaction>('/transactions', transaction);
