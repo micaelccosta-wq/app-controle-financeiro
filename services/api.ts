@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import axios from 'axios';
 import { Transaction, Category, Account, Budget, FinancialGoal, WealthConfig } from '../types';
 
@@ -139,5 +140,11 @@ export const wealthConfigService = {
     update: async (config: WealthConfig) => {
         const response = await api.post<WealthConfig>('/wealth-config', config);
         return response.data;
+    }
+};
+
+export const dataService = {
+    reset: async () => {
+        await api.delete('/data/reset');
     }
 };

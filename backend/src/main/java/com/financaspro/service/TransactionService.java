@@ -18,6 +18,7 @@ public class TransactionService {
     @Autowired
     private UserContext userContext;
 
+    @SuppressWarnings("null")
     public List<Transaction> findAll() {
         return transactionRepository.findAllByUserId(userContext.getCurrentUserId());
     }

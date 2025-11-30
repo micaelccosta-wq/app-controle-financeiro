@@ -17,9 +17,9 @@ import OFXImportModal from './components/OFXImportModal';
 import CSVImportModal from './components/CSVImportModal';
 import BackupModal from './components/BackupModal';
 import { performBackupToDrive } from './services/driveService';
-import { transactionService, categoryService, accountService, budgetService, goalService, wealthConfigService } from './services/api';
+import { transactionService, categoryService, accountService, budgetService, goalService, wealthConfigService, dataService } from './services/api';
 import { Transaction, Category, TransactionType, CategorySubtype, Budget, Account, AccountType, BackupData, FinancialGoal, WealthConfig, GoogleDriveConfig } from './types';
-import { LayoutDashboard, Tags, PieChart, Landmark, CreditCard, BarChart3, RotateCcw, Save, TrendingUp, Cloud } from 'lucide-react';
+import { LayoutDashboard, Tags, PieChart, Landmark, CreditCard, BarChart3, RotateCcw, Save, TrendingUp, Cloud, Loader2 } from 'lucide-react';
 
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './pages/Login';
@@ -32,6 +32,7 @@ const App: React.FC = () => {
   }
 
   const [activeTab, setActiveTab] = useState<'transactions' | 'categories' | 'budget' | 'accounts' | 'cards' | 'reports' | 'wealth'>('transactions');
+  const [isLoading, setIsLoading] = useState(true);
 
   // --- STORAGE KEYS ---
   // --- STORAGE KEYS REMOVED ---
@@ -57,6 +58,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
+        setIsLoading(true);
         const [loadedTransactions, loadedCategories, loadedAccounts, loadedBudgets, loadedGoals, loadedWealthConfig] = await Promise.all([
           transactionService.getAll(),
           categoryService.getAll(),
@@ -75,10 +77,110 @@ const App: React.FC = () => {
 
       } catch (error) {
         console.error("Failed to load data from API", error);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadData();
   }, []);
+
+  // ... (Auto Backup Logic omitted for brevity, it remains unchanged)
+
+  // ... (handleManualDriveBackup omitted)
+
+  // ... (Selection State omitted)
+
+  // ... (Edit State omitted)
+
+  // ... (Budget Generator Modal omitted)
+
+  // ... (Import Modals omitted)
+
+  // ... (Category Edit State omitted)
+
+  // ... (handleAddTransactions omitted)
+
+  // ... (handleImportSuccess omitted)
+
+  // ... (handleImportCategories omitted)
+
+  // ... (handleImportAccounts omitted)
+
+  // ... (handleRestoreData omitted)
+
+  // ... (handleDeleteTransaction omitted)
+
+  // ... (handleBulkDeleteTransactions omitted)
+
+  // ... (handleEditTransactionStart omitted)
+
+  // ... (handleSaveEditedTransaction omitted)
+
+  // ... (handleToggleSelection omitted)
+
+  // ... (handleSelectAll omitted)
+
+  // ... (handleBulkStatusChange omitted)
+
+  // ... (Category Logic omitted)
+
+  // ... (Budget Logic omitted)
+
+  // ... (Wealth handlers omitted)
+
+  const handleResetData = async () => {
+    if (confirm("TEM CERTEZA? Isso apagará TODOS os seus dados (transações, contas, categorias, etc) permanentemente.")) {
+      try {
+        setIsLoading(true);
+        await dataService.reset();
+        setTransactions([]);
+        setAccounts([]);
+        setCategories([]);
+        setBudgets([]);
+        setGoals([]);
+        setWealthConfig({ passiveIncomeGoal: 0 });
+        alert("Dados resetados com sucesso.");
+      } catch (error) {
+        console.error("Failed to reset data", error);
+        alert("Erro ao resetar dados.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }
+
+  // --- Dashboard Logic ---
+  const getAccountType = (accId?: string) => accounts.find(a => a.id === accId)?.type;
+
+  const cashFlowTransactions = transactions.filter(t => {
+    if (!t.accountId) return true; // Standard transaction without account
+    return getAccountType(t.accountId) === AccountType.BANK;
+  });
+
+  const totalIncome = cashFlowTransactions
+    .filter(t => t.type === TransactionType.INCOME && t.isApplied)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const futureIncome = cashFlowTransactions
+    .filter(t => t.type === TransactionType.INCOME && !t.isApplied)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const totalExpense = cashFlowTransactions
+    .filter(t => t.type === TransactionType.EXPENSE && t.isApplied)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const futureExpense = cashFlowTransactions
+    .filter(t => t.type === TransactionType.EXPENSE && !t.isApplied)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const balance = totalIncome - totalExpense;
+
+  const displayTransactions = transactions.filter(t => {
+    if (!t.accountId) return true;
+    return getAccountType(t.accountId) === AccountType.BANK;
+  });
+
+
 
   // --- AUTO BACKUP LOGIC ---
   const hasAttemptedBackup = useRef(false);
@@ -287,7 +389,7 @@ const App: React.FC = () => {
   const handleSaveEditedTransaction = async (updated: Transaction, updateBatch: boolean) => {
     try {
       if (updateBatch && updated.batchId) {
-        // Logic for batch update is complex on backend without specific endpoint, 
+        // Logic for batch update is complex on backend without specific endpoint,
         // but for now we can fetch all with batchId and update them.
         // Or just update the single one if backend doesn't support batch update logic yet.
         // For simplicity in this migration, let's update just the single one or loop.
@@ -616,43 +718,18 @@ const App: React.FC = () => {
     }
   };
 
-  const handleResetData = () => {
-    if (confirm("ATENÇÃO: A função de resetar dados via frontend foi desabilitada na migração para o backend. Contate o administrador do sistema para limpar o banco de dados.")) {
-      // No-op or reload
-      window.location.reload();
-    }
+
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+          <p className="text-slate-600 font-medium">Carregando suas finanças...</p>
+        </div>
+      </div>
+    );
   }
-
-  // --- Dashboard Logic ---
-  const getAccountType = (accId?: string) => accounts.find(a => a.id === accId)?.type;
-
-  const cashFlowTransactions = transactions.filter(t => {
-    if (!t.accountId) return true; // Standard transaction without account
-    return getAccountType(t.accountId) === AccountType.BANK;
-  });
-
-  const totalIncome = cashFlowTransactions
-    .filter(t => t.type === TransactionType.INCOME && t.isApplied)
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const futureIncome = cashFlowTransactions
-    .filter(t => t.type === TransactionType.INCOME && !t.isApplied)
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const totalExpense = cashFlowTransactions
-    .filter(t => t.type === TransactionType.EXPENSE && t.isApplied)
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const futureExpense = cashFlowTransactions
-    .filter(t => t.type === TransactionType.EXPENSE && !t.isApplied)
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const balance = totalIncome - totalExpense;
-
-  const displayTransactions = transactions.filter(t => {
-    if (!t.accountId) return true;
-    return getAccountType(t.accountId) === AccountType.BANK;
-  });
 
   return (
     <div className="min-h-screen bg-slate-50">
