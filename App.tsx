@@ -199,28 +199,51 @@ const App: React.FC = () => {
     }
   };
 
-  const handleImportCategories = (newCategories: Category[]) => {
-    setCategories(prev => {
-      // Avoid duplicates by name
-      const existingNames = new Set(prev.map(c => c.name.toLowerCase()));
+  const handleImportCategories = async (newCategories: Category[]) => {
+    try {
+      // Avoid duplicates by name (locally check first, but backend should also handle or we just send all)
+      // Ideally we send all and backend handles upsert or we filter here.
+      // Let's filter here to save bandwidth
+      const existingNames = new Set(categories.map(c => c.name.toLowerCase()));
       const uniqueNew = newCategories.filter(c => !existingNames.has(c.name.toLowerCase()));
-      return [...prev, ...uniqueNew];
-    });
-    alert(`${newCategories.length} categorias importadas.`);
-    setIsCSVImportOpen(false);
-    setActiveTab('categories');
+
+      if (uniqueNew.length === 0) {
+        alert("Todas as categorias importadas já existem.");
+        setIsCSVImportOpen(false);
+        return;
+      }
+
+      const saved = await categoryService.createBatch(uniqueNew);
+      setCategories(prev => [...prev, ...saved]);
+      alert(`${saved.length} categorias importadas com sucesso.`);
+      setIsCSVImportOpen(false);
+      setActiveTab('categories');
+    } catch (error) {
+      console.error("Failed to import categories", error);
+      alert("Erro ao importar categorias.");
+    }
   };
 
-  const handleImportAccounts = (newAccounts: Account[]) => {
-    setAccounts(prev => {
-      // Avoid duplicates by name
-      const existingNames = new Set(prev.map(a => a.name.toLowerCase()));
+  const handleImportAccounts = async (newAccounts: Account[]) => {
+    try {
+      const existingNames = new Set(accounts.map(a => a.name.toLowerCase()));
       const uniqueNew = newAccounts.filter(a => !existingNames.has(a.name.toLowerCase()));
-      return [...prev, ...uniqueNew];
-    });
-    alert(`${newAccounts.length} contas importadas.`);
-    setIsCSVImportOpen(false);
-    setActiveTab('accounts');
+
+      if (uniqueNew.length === 0) {
+        alert("Todas as contas importadas já existem.");
+        setIsCSVImportOpen(false);
+        return;
+      }
+
+      const saved = await accountService.createBatch(uniqueNew);
+      setAccounts(prev => [...prev, ...saved]);
+      alert(`${saved.length} contas importadas com sucesso.`);
+      setIsCSVImportOpen(false);
+      setActiveTab('accounts');
+    } catch (error) {
+      console.error("Failed to import accounts", error);
+      alert("Erro ao importar contas.");
+    }
   };
 
   const handleRestoreData = (backup: BackupData) => {
