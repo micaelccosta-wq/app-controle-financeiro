@@ -371,16 +371,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBulkDeleteTransactions = async (ids: string[]) => {
-    try {
-      await Promise.all(ids.map(id => transactionService.delete(id)));
-      setTransactions(prev => prev.filter(t => !ids.includes(t.id)));
-      setSelectedIds([]);
-    } catch (error) {
-      console.error("Failed to bulk delete", error);
-      alert("Erro ao excluir transações.");
-    }
-  };
+
 
   const handleEditTransactionStart = (transaction: Transaction) => {
     setEditingTransaction(transaction);
@@ -450,6 +441,19 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Failed to bulk update status", error);
       alert("Erro ao atualizar status.");
+    }
+  };
+
+  const handleBulkDeleteTransactions = async (ids: string[]) => {
+    if (!confirm(`Tem certeza que deseja excluir ${ids.length} movimentações?`)) return;
+
+    try {
+      await transactionService.deleteBatch(ids);
+      setTransactions(prev => prev.filter(t => !ids.includes(t.id)));
+      setSelectedIds([]);
+    } catch (error) {
+      console.error("Failed to bulk delete transactions", error);
+      alert("Erro ao excluir movimentações em lote.");
     }
   };
 

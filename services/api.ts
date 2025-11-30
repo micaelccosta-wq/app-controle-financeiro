@@ -45,6 +45,9 @@ export const transactionService = {
     },
     delete: async (id: string) => {
         await api.delete(`/transactions/${id}`);
+    },
+    deleteBatch: async (ids: string[]) => {
+        await api.post('/transactions/batch-delete', ids);
     }
 };
 

@@ -58,4 +58,10 @@ public class TransactionController {
         transactionService.deleteById(id);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/batch-delete")
+    public ResponseEntity<Void> deleteTransactions(@RequestBody List<String> ids) {
+        transactionService.deleteBatch(ids);
+        return ResponseEntity.ok().build();
+    }
 }

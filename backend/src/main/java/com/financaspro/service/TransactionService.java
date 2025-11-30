@@ -48,4 +48,14 @@ public class TransactionService {
             transactionRepository.deleteById(id);
         }
     }
+
+    public void deleteBatch(List<String> ids) {
+        String userId = userContext.getCurrentUserId();
+        List<Transaction> transactions = transactionRepository.findAllById(ids);
+        // Filter to ensure user owns these transactions
+        List<Transaction> userTransactions = transactions.stream()
+                .filter(t -> t.getUserId().equals(userId))
+                .toList();
+        transactionRepository.deleteAll(userTransactions);
+    }
 }
