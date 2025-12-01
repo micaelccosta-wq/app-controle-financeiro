@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Category, Transaction, Budget, TransactionType } from '../types';
 import { ChevronLeft, ChevronRight, AlertCircle, ArrowRightLeft, Wallet, PieChart, TrendingUp, Layers, ShoppingBag, Activity, X, Calendar, Filter } from 'lucide-react';
 import BudgetReallocationModal from './BudgetReallocationModal';
@@ -12,6 +12,34 @@ interface BudgetViewProps {
   onSaveBudget: (budget: Budget) => void;
   onSaveBudgets: (budgets: Budget[]) => Promise<void>;
 }
+
+interface BudgetInputProps {
+  initialValue: number;
+  onSave: (value: string) => void;
+}
+
+const BudgetInput: React.FC<BudgetInputProps> = ({ initialValue, onSave }) => {
+  const [localValue, setLocalValue] = useState(initialValue === 0 ? '' : initialValue.toString());
+
+  useEffect(() => {
+    setLocalValue(initialValue === 0 ? '' : initialValue.toString());
+  }, [initialValue]);
+
+  const handleBlur = () => {
+    onSave(localValue);
+  };
+
+  return (
+    <input
+      type="number"
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={handleBlur}
+      placeholder="0.00"
+      className="w-28 pl-8 pr-2 py-1 text-right text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+    />
+  );
+};
 
 const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budgets, onSaveBudget, onSaveBudgets }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -420,12 +448,10 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                       <label className="text-xs text-slate-500 mb-1">Meta Mensal</label>
                       <div className="relative">
                         <span className="absolute left-3 top-2 text-xs text-slate-400">R$</span>
-                        <input
-                          type="number"
-                          value={planned || ''}
-                          onChange={(e) => handleBudgetChange(cat.id, e.target.value)}
-                          placeholder="0.00"
-                          className="w-28 pl-8 pr-2 py-1 text-right text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                        <span className="absolute left-3 top-2 text-xs text-slate-400">R$</span>
+                        <BudgetInput
+                          initialValue={planned}
+                          onSave={(val) => handleBudgetChange(cat.id, val)}
                         />
                       </div>
                     </div>
