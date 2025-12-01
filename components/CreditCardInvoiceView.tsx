@@ -25,6 +25,8 @@ const CreditCardInvoiceView: React.FC<CreditCardInvoiceViewProps> = ({
    const creditCards = accounts.filter(a => a.type === AccountType.CREDIT_CARD);
    const [selectedCardId, setSelectedCardId] = useState<string>(creditCards[0]?.id || '');
    const [selectedMonth, setSelectedMonth] = useState<string>('');
+   const [searchTerm, setSearchTerm] = useState('');
+   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
 
    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -146,9 +148,14 @@ const CreditCardInvoiceView: React.FC<CreditCardInvoiceViewProps> = ({
       );
    }
 
-   // Filter transactions for currently selected invoice
+   // Filter transactions for currently selected invoice AND search term
    const invoiceTransactions = transactions.filter(t =>
-      t.accountId === selectedCardId && t.invoiceMonth === selectedMonth
+      t.accountId === selectedCardId &&
+      t.invoiceMonth === selectedMonth &&
+      (searchTerm === '' ||
+         t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         t.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
    );
 
    const totalInvoice = invoiceTransactions.reduce((acc, t) => {
@@ -263,9 +270,50 @@ const CreditCardInvoiceView: React.FC<CreditCardInvoiceViewProps> = ({
                      {isClosed ? 'Fechada' : 'Aberta'}
                   </span>
                </div>
+
+               <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {selectedTransactionIds.length > 0 && !isClosed && (
+                     <button
+                        onClick={() => {
+                           if (onBulkDelete && confirm(`Excluir ${selectedTransactionIds.length} itens?`)) {
+                              onBulkDelete(selectedTransactionIds);
+                              setSelectedTransactionIds([]);
+                           }
+                        }}
+                        className="text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                     >
+                        <Trash2 size={16} /> Excluir ({selectedTransactionIds.length})
+                     </button>
+                  )}
+                  <input
+                     type="text"
+                     placeholder="Buscar na fatura..."
+                     value={searchTerm}
+                     onChange={e => setSearchTerm(e.target.value)}
+                     className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-48"
+                  />
+               </div>
             </div>
 
             <div className="divide-y divide-slate-100">
+               {/* Header Row for Select All */}
+               {!isClosed && invoiceTransactions.length > 0 && (
+                  <div className="px-4 py-2 bg-slate-50/50 border-b border-slate-100 flex items-center gap-3">
+                     <input
+                        type="checkbox"
+                        checked={selectedTransactionIds.length === invoiceTransactions.length && invoiceTransactions.length > 0}
+                        onChange={(e) => {
+                           if (e.target.checked) {
+                              setSelectedTransactionIds(invoiceTransactions.map(t => t.id));
+                           } else {
+                              setSelectedTransactionIds([]);
+                           }
+                        }}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                     />
+                     <span className="text-xs text-slate-500 font-medium">Selecionar Todos</span>
+                  </div>
+               )}
                {invoiceTransactions.length === 0 ? (
                   <div className="p-12 text-center text-slate-400 border-dashed">
                      <p className="mb-2">Nenhum lançamento nesta fatura.</p>
@@ -276,8 +324,20 @@ const CreditCardInvoiceView: React.FC<CreditCardInvoiceViewProps> = ({
                ) : (
                   invoiceTransactions.map(t => {
                      return (
-                        <div key={t.id} className="p-4 flex items-center justify-between hover:bg-slate-50 group transition-colors">
+                        <div key={t.id} className={`p-4 flex items-center justify-between hover:bg-slate-50 group transition-colors ${selectedTransactionIds.includes(t.id) ? 'bg-blue-50/50' : ''}`}>
                            <div className="flex items-center gap-3">
+                              {!isClosed && (
+                                 <input
+                                    type="checkbox"
+                                    checked={selectedTransactionIds.includes(t.id)}
+                                    onChange={() => {
+                                       setSelectedTransactionIds(prev =>
+                                          prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id]
+                                       );
+                                    }}
+                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                 />
+                              )}
                               <div className="flex flex-col">
                                  <span className="font-medium text-slate-700">{t.description}</span>
                                  <div className="flex gap-2 text-xs text-slate-500 mt-1">

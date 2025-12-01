@@ -32,6 +32,7 @@ interface ParsedTransaction extends ParsedItemBase {
   type: TransactionType;
   category: string;
   ignoreInBudget: boolean;
+  invoiceMonth?: string; // Optional per-row invoice
   split?: { categoryName: string; amount: number }[];
 }
 
@@ -136,11 +137,11 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
     let fileName = '';
 
     if (importType === 'transactions') {
-      headers = ['Data (AAAA-MM-DD)', 'Descricao', 'Valor', 'Tipo (RECEITA/DESPESA)', 'Categoria (Opcional)', 'Ignorar no Orçamento (SIM/NAO)'];
+      headers = ['Data (AAAA-MM-DD)', 'Descricao', 'Valor', 'Tipo (RECEITA/DESPESA)', 'Categoria', 'Ignorar no Orçamento', 'Fatura (MM/AAAA - Opcional)'];
       rows = [
-        ['2025-10-01', 'Supermercado Compra', '150.50', 'DESPESA', 'Alimentação', 'NAO'],
-        ['2025-10-05', 'Salário Mensal', '5000.00', 'RECEITA', 'Salário', 'NAO'],
-        ['2025-10-10', 'Reembolso Empresa', '125.90', 'RECEITA', 'Reembolso', 'SIM']
+        ['2025-10-01', 'Supermercado', '150.50', 'DESPESA', 'Alimentação', 'NAO', '10/2025'],
+        ['2025-10-05', 'Salário', '5000.00', 'RECEITA', 'Salário', 'NAO', ''],
+        ['2025-10-10', 'Uber', '25.90', 'DESPESA', 'Transporte', 'SIM', '11/2025']
       ];
       fileName = 'modelo_importacao_transacoes.csv';
     } else if (importType === 'categories') {
@@ -223,17 +224,27 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
           const rawType = cols[3]?.trim().toUpperCase();
 
           // Robust parsing for Category which might contain the separator (e.g. splits)
-          // Structure: Date(0), Desc(1), Val(2), Type(3), [Category Parts...], Ignore(Last?)
+          // Structure: Date(0), Desc(1), Val(2), Type(3), [Category Parts...], [Ignore?], [Invoice?]
 
-          const lastCol = cols[cols.length - 1]?.trim().toUpperCase();
-          const isIgnoreFlag = ['SIM', 'NAO', 'YES', 'NO', 'TRUE', 'FALSE'].includes(lastCol);
-
-          let ignoreInBudget = false;
+          let lastCol = cols[cols.length - 1]?.trim(); // Don't uppercase yet, invoice can be mixed case
           let categoryEndIndex = cols.length - 1;
 
+          // Check for Invoice (MM/YYYY) at the end
+          let invoiceMonth: string | undefined = undefined;
+          if (/^\d{1,2}\/\d{4}$/.test(lastCol)) {
+            invoiceMonth = lastCol;
+            foundInvoiceInCsv = true; // Mark that invoice data was found
+            categoryEndIndex--; // Move back
+            lastCol = cols[categoryEndIndex]?.trim(); // Update lastCol for Ignore check
+          }
+
+          // Check for Ignore Flag
+          const isIgnoreFlag = ['SIM', 'NAO', 'YES', 'NO', 'TRUE', 'FALSE'].includes(lastCol?.toUpperCase());
+          let ignoreInBudget = false; // This is the first one
+
           if (isIgnoreFlag) {
-            ignoreInBudget = (lastCol === 'SIM' || lastCol === 'YES' || lastCol === 'TRUE');
-            categoryEndIndex = cols.length - 2;
+            ignoreInBudget = (lastCol?.toUpperCase() === 'SIM' || lastCol?.toUpperCase() === 'YES' || lastCol?.toUpperCase() === 'TRUE');
+            categoryEndIndex--;
           }
 
           // Reconstruct category from index 4 up to categoryEndIndex
@@ -300,6 +311,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
             type: (rawType === 'RECEITA' || rawType === 'INCOME') ? TransactionType.INCOME : TransactionType.EXPENSE,
             category: finalCategory || 'Outros',
             ignoreInBudget,
+            invoiceMonth,
             split: splits.length > 0 ? splits : undefined
           } as ParsedTransaction);
 
@@ -403,7 +415,13 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
 
     if (importType === 'transactions') {
       if (!targetAccountId) { alert("Selecione uma conta de destino."); return; }
-      if (isTargetCreditCard && !targetInvoice) { alert("Selecione a fatura de destino."); return; }
+
+      // Check if any selected item is missing invoice info (either from CSV or dropdown)
+      const hasCsvInvoice = parsedItems.some(i => i.kind === 'transaction' && i.invoiceMonth);
+      if (isTargetCreditCard && !targetInvoice && !hasCsvInvoice) {
+        // If no global invoice selected, AND no CSV invoice found, warn.
+        // Actually, we should enforce: if row has no invoice, use global. If global is empty, error.
+      }
 
       const transactions: Transaction[] = (selectedItems as ParsedTransaction[]).map(item => {
         let finalType = item.type;
@@ -412,6 +430,14 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
           finalType = TransactionType.EXPENSE;
           finalAmount = -finalAmount;
         }
+
+        // Use row invoice if present, otherwise global targetInvoice
+        const finalInvoice = item.invoiceMonth || targetInvoice;
+
+        if (isTargetCreditCard && !finalInvoice) {
+          throw new Error(`Fatura não definida para a transação: ${item.description}`);
+        }
+
         return {
           id: crypto.randomUUID(),
           description: item.description,
@@ -422,7 +448,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
           isApplied: true,
           ignoreInBudget: item.ignoreInBudget,
           accountId: targetAccountId,
-          invoiceMonth: isTargetCreditCard ? targetInvoice : undefined,
+          invoiceMonth: isTargetCreditCard ? finalInvoice : undefined,
           observations: 'Importado via CSV',
           split: item.split
         };
@@ -474,7 +500,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
   };
 
   const getHelpText = () => {
-    if (importType === 'transactions') return 'Data, Descrição, Valor, Tipo, Categoria, Ignorar no Orçamento';
+    if (importType === 'transactions') return 'Data, Descrição, Valor, Tipo, Categoria, Ignorar (Opc), Fatura (Opc)';
     if (importType === 'categories') return 'Nome, Tipo (Rec/Desp), Subtipo (Fix/Var), Impacta Orçamento, Ícone';
     if (importType === 'accounts') return 'Nome, Tipo (Banco/Cartão), Saldo Inicial, Fechamento, Vencimento';
     if (importType === 'budgets') return 'Categoria, Mês (1-12), Ano, Valor';
@@ -595,18 +621,21 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                   {isTargetCreditCard && (
                     <div className="animate-in fade-in">
                       <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                        <CreditCard size={14} /> Fatura de Destino
+                        <CreditCard size={14} /> Fatura Padrão
                       </label>
                       <select
                         value={targetInvoice}
                         onChange={(e) => setTargetInvoice(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                       >
-                        <option value="">Selecione a fatura...</option>
+                        <option value="">Selecione (ou use do CSV)...</option>
                         {invoiceOptions.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Se o CSV contiver a coluna de fatura, ela terá prioridade.
+                      </p>
                     </div>
                   )}
                   <div className="md:col-span-2 pt-2 flex gap-4 text-sm text-slate-600">
