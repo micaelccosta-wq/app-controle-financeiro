@@ -104,7 +104,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
   };
 
   // Get unique categories for filter dropdown
-  const uniqueCategories = Array.from(new Set(transactions.map(t => t.category))).sort();
+  const uniqueCategories = Array.from(new Set(transactions.map(t => {
+    // Handle potential split category strings like "Category: 100"
+    if (t.category.includes(':')) {
+      return t.category.split(':')[0].trim();
+    }
+    return t.category;
+  }))).sort();
 
   // Filter accounts for dropdown (ONLY BANKS)
   const bankAccounts = accounts.filter(a => a.type === AccountType.BANK);

@@ -67,6 +67,12 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     .reduce((acc, b) => acc + b.amount, 0);
 
   // 2. Total Realized for the specific month view (All Expenses)
+  // Helper to check if category impacts budget
+  const doesCategoryImpactBudget = (catName: string) => {
+    const cat = categories.find(c => c.name === catName);
+    return cat ? cat.impactsBudget : true; // Default to true if unknown
+  };
+
   const monthlyTotalRealized = transactions
     .filter(t => {
       const [yStr, mStr] = t.date.split('-');
@@ -74,7 +80,18 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       const tMonth = parseInt(mStr) - 1;
       return t.type === TransactionType.EXPENSE && tMonth === selectedMonth && tYear === selectedYear;
     })
-    .reduce((acc, t) => acc + t.amount, 0);
+    .reduce((acc, t) => {
+      if (t.split && t.split.length > 0) {
+        // Sum only splits that impact budget
+        const splitSum = t.split.reduce((sAcc, s) => {
+          return doesCategoryImpactBudget(s.categoryName) ? sAcc + s.amount : sAcc;
+        }, 0);
+        return acc + splitSum;
+      } else {
+        // Single category
+        return doesCategoryImpactBudget(t.category) ? acc + t.amount : acc;
+      }
+    }, 0);
 
   // 3. Monthly Status Calc
   const monthlyRemaining = monthlyTotalBudgeted - monthlyTotalRealized;
