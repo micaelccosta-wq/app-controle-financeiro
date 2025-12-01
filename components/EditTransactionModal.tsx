@@ -49,13 +49,23 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       setIsApplied(transaction.isApplied);
       setIgnoreInBudget(transaction.ignoreInBudget || false);
       setObservations(transaction.observations || '');
-      setAccountId(transaction.accountId || '');
+
+      // Default to existing account, or find first BANK account if none
+      let initialAccount = transaction.accountId || '';
+      if (!initialAccount && availableAccounts.length > 0) {
+        const bankAcc = availableAccounts.find(a => a.type === AccountType.BANK);
+        if (bankAcc) initialAccount = bankAcc.id;
+      }
+      setAccountId(initialAccount);
+
       setSplits(transaction.split || []);
       setUpdateBatch(false);
     }
-  }, [transaction]);
+  }, [transaction, availableAccounts]);
 
-  const filteredCategories = availableCategories.filter(c => c.type === type);
+  const filteredCategories = availableCategories
+    .filter(c => c.type === type)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Determine if it is a Credit Card transaction (either by existing account or selection)
   const isCreditCard = availableAccounts.find(a => a.id === accountId)?.type === AccountType.CREDIT_CARD;

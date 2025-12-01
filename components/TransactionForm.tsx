@@ -31,7 +31,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransactions, av
   const [invoiceMonth, setInvoiceMonth] = useState(''); // "MM/YYYY"
 
   // Filter categories based on selected type
-  const filteredCategories = availableCategories.filter(c => c.type === type);
+  // Filter categories based on selected type and sort alphabetically
+  const filteredCategories = availableCategories
+    .filter(c => c.type === type)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const selectedAccount = availableAccounts.find(a => a.id === accountId);
   const isCreditCard = selectedAccount?.type === AccountType.CREDIT_CARD;
@@ -47,10 +50,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransactions, av
     }
   }, [type, availableCategories, filteredCategories, category, splits]);
 
-  // Set default account if available
+  // Set default account if available (Prioritize BANK)
   useEffect(() => {
     if (availableAccounts.length > 0 && !accountId) {
-      setAccountId(availableAccounts[0].id);
+      const bankAcc = availableAccounts.find(a => a.type === AccountType.BANK);
+      if (bankAcc) {
+        setAccountId(bankAcc.id);
+      } else {
+        setAccountId(availableAccounts[0].id);
+      }
     }
   }, [availableAccounts, accountId]);
 
