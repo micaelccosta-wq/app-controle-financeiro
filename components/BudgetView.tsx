@@ -111,12 +111,16 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       if (t.split && t.split.length > 0) {
         // Sum only splits that impact budget
         const splitSum = t.split.reduce((sAcc, s) => {
-          return doesCategoryImpactBudget(s.categoryName) ? sAcc + s.amount : sAcc;
+          let catName = s.categoryName;
+          if (catName.includes(':')) catName = catName.split(':')[0].trim();
+          return doesCategoryImpactBudget(catName) ? sAcc + s.amount : sAcc;
         }, 0);
         return acc + splitSum;
       } else {
         // Single category
-        return doesCategoryImpactBudget(t.category) ? acc + t.amount : acc;
+        let catName = t.category;
+        if (catName.includes(':')) catName = catName.split(':')[0].trim();
+        return doesCategoryImpactBudget(catName) ? acc + t.amount : acc;
       }
     }, 0);
 
@@ -147,10 +151,16 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       })
       .reduce((acc, curr) => {
         if (curr.split && curr.split.length > 0) {
-          const splitForCat = curr.split.find(s => s.categoryName === categoryName);
+          const splitForCat = curr.split.find(s => {
+            let sName = s.categoryName;
+            if (sName.includes(':')) sName = sName.split(':')[0].trim();
+            return sName === categoryName;
+          });
           return acc + (splitForCat ? splitForCat.amount : 0);
         } else {
-          return curr.category === categoryName ? acc + curr.amount : acc;
+          let cName = curr.category;
+          if (cName.includes(':')) cName = cName.split(':')[0].trim();
+          return cName === categoryName ? acc + curr.amount : acc;
         }
       }, 0);
   };

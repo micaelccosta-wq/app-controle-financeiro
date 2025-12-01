@@ -45,7 +45,14 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       setAmount(transaction.amount.toString());
       setDate(transaction.date);
       setType(transaction.type);
-      setCategory(transaction.category);
+
+      // Clean category name (remove ": Value" if present)
+      let cleanCat = transaction.category;
+      if (cleanCat.includes(':')) {
+        cleanCat = cleanCat.split(':')[0].trim();
+      }
+      setCategory(cleanCat);
+
       setIsApplied(transaction.isApplied);
       setIgnoreInBudget(transaction.ignoreInBudget || false);
       setObservations(transaction.observations || '');
