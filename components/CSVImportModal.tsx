@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { X, Upload, FileText, Check, AlertTriangle, Download, CreditCard, HelpCircle, List, Wallet } from 'lucide-react';
-import { Transaction, TransactionType, Category, Account, AccountType, CategorySubtype } from '../types';
+import { X, Upload, FileText, Check, AlertTriangle, Download, CreditCard, HelpCircle, List, Wallet, PieChart } from 'lucide-react';
+import { Transaction, TransactionType, Category, Account, AccountType, CategorySubtype, Budget } from '../types';
 import { ICON_MAP } from './CategoryForm';
 
 interface CSVImportModalProps {
@@ -10,7 +10,6 @@ interface CSVImportModalProps {
   onImport: (transactions: Transaction[]) => void;
   onImportCategories?: (categories: Category[]) => void;
   onImportAccounts?: (accounts: Account[]) => void;
-  availableCategories: Category[];
   availableCategories: Category[];
   availableAccounts: Account[];
   onImportBudgets?: (budgets: Budget[]) => void;
