@@ -32,8 +32,16 @@ const TransactionList: React.FC<TransactionListProps> = ({
 }) => {
   // --- Filter States ---
   const [filterDesc, setFilterDesc] = useState('');
-  const [filterDateStart, setFilterDateStart] = useState('');
-  const [filterDateEnd, setFilterDateEnd] = useState('');
+
+  // Default Date Range: Today - 30 days to Today + 30 days
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  const thirtyDaysFuture = new Date(today);
+  thirtyDaysFuture.setDate(today.getDate() + 30);
+
+  const [filterDateStart, setFilterDateStart] = useState(thirtyDaysAgo.toISOString().split('T')[0]);
+  const [filterDateEnd, setFilterDateEnd] = useState(thirtyDaysFuture.toISOString().split('T')[0]);
   const [filterCategory, setFilterCategory] = useState('');
   const [filterAccount, setFilterAccount] = useState('');
   const [filterType, setFilterType] = useState<string>('');

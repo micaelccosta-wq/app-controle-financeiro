@@ -11,10 +11,12 @@ interface CSVImportModalProps {
   onImportCategories?: (categories: Category[]) => void;
   onImportAccounts?: (accounts: Account[]) => void;
   availableCategories: Category[];
+  availableCategories: Category[];
   availableAccounts: Account[];
+  onImportBudgets?: (budgets: Budget[]) => void;
 }
 
-type ImportType = 'transactions' | 'categories' | 'accounts';
+type ImportType = 'transactions' | 'categories' | 'accounts' | 'budgets';
 
 interface ParsedItemBase {
   id: string;
@@ -51,10 +53,19 @@ interface ParsedAccount extends ParsedItemBase {
   dueDay?: number;
 }
 
-type ParsedItem = ParsedTransaction | ParsedCategory | ParsedAccount;
+interface ParsedBudget extends ParsedItemBase {
+  kind: 'budget';
+  categoryId: string; // We will try to match by name first
+  categoryName: string;
+  month: number; // 0-11
+  year: number;
+  amount: number;
+}
+
+type ParsedItem = ParsedTransaction | ParsedCategory | ParsedAccount | ParsedBudget;
 
 const CSVImportModal: React.FC<CSVImportModalProps> = ({
-  isOpen, onClose, onImport, onImportCategories, onImportAccounts, availableCategories, availableAccounts
+  isOpen, onClose, onImport, onImportCategories, onImportAccounts, onImportBudgets, availableCategories, availableAccounts
 }) => {
   const [step, setStep] = useState<'upload' | 'preview'>('upload');
   const [importType, setImportType] = useState<ImportType>('transactions');
@@ -125,6 +136,14 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
         ['Dinheiro', 'BANCO', '150.00', '', '']
       ];
       fileName = 'modelo_importacao_contas.csv';
+    } else if (importType === 'budgets') {
+      headers = ['Categoria', 'Mês (1-12)', 'Ano', 'Valor'];
+      rows = [
+        ['Alimentação', '1', '2025', '1500.00'],
+        ['Transporte', '1', '2025', '500.00'],
+        ['Lazer', '2', '2025', '300.00']
+      ];
+      fileName = 'modelo_importacao_orcamento.csv';
     }
 
     const csvContent = [
@@ -297,6 +316,35 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
             closingDay: isNaN(closeDay) ? undefined : closeDay,
             dueDay: isNaN(dueDay) ? undefined : dueDay
           } as ParsedAccount);
+
+        } else if (importType === 'budgets') {
+          if (cols.length < 4) continue;
+          const catName = cols[0]?.trim().replace(/"/g, '');
+          const month = parseInt(cols[1]?.trim());
+          const year = parseInt(cols[2]?.trim());
+          const amount = parseNumber(cols[3]?.trim());
+
+          let isValid = true;
+          let error = '';
+
+          if (!catName) { isValid = false; error = 'Categoria obrigatória'; }
+          if (isNaN(month) || month < 1 || month > 12) { isValid = false; error = 'Mês inválido (1-12)'; }
+          if (isNaN(year) || year < 2000 || year > 2100) { isValid = false; error = 'Ano inválido'; }
+          if (isNaN(amount)) { isValid = false; error = 'Valor inválido'; }
+
+          // Try to find category ID
+          const category = availableCategories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+          if (!category) { isValid = false; error = `Categoria '${catName}' não encontrada`; }
+
+          items.push({
+            kind: 'budget',
+            id, isValid, error, selected: isValid,
+            categoryName: catName,
+            categoryId: category ? category.id : '',
+            month: month - 1, // Convert to 0-index
+            year,
+            amount
+          } as ParsedBudget);
         }
       }
 
@@ -363,6 +411,16 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
         dueDay: item.type === AccountType.CREDIT_CARD ? item.dueDay : undefined
       }));
       onImportAccounts(accounts);
+
+    } else if (importType === 'budgets' && onImportBudgets) {
+      const budgets: Budget[] = (selectedItems as ParsedBudget[]).map(item => ({
+        id: `${item.categoryId}-${item.month}-${item.year}`,
+        categoryId: item.categoryId,
+        month: item.month,
+        year: item.year,
+        amount: item.amount
+      }));
+      onImportBudgets(budgets);
     }
 
     handleClose();
@@ -380,6 +438,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
     if (importType === 'transactions') return 'Data, Descrição, Valor, Tipo, Categoria (ou "Cat1:Val1;Cat2:Val2")';
     if (importType === 'categories') return 'Nome, Tipo (Rec/Desp), Subtipo (Fix/Var), Impacta Orçamento, Ícone';
     if (importType === 'accounts') return 'Nome, Tipo (Banco/Cartão), Saldo Inicial, Fechamento, Vencimento';
+    if (importType === 'budgets') return 'Categoria, Mês (1-12), Ano, Valor';
     return '';
   }
 
@@ -424,6 +483,12 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${importType === 'accounts' ? 'bg-white shadow text-blue-700' : 'text-slate-500'}`}
                 >
                   <Wallet size={16} /> Contas
+                </button>
+                <button
+                  onClick={() => setImportType('budgets')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${importType === 'budgets' ? 'bg-white shadow text-amber-700' : 'text-slate-500'}`}
+                >
+                  <PieChart size={16} /> Orçamentos
                 </button>
               </div>
 
@@ -558,6 +623,15 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                         </>
                       )}
 
+                      {importType === 'budgets' && (
+                        <>
+                          <th className="px-4 py-3">Categoria</th>
+                          <th className="px-4 py-3">Mês</th>
+                          <th className="px-4 py-3">Ano</th>
+                          <th className="px-4 py-3">Valor</th>
+                        </>
+                      )}
+
                       <th className="px-4 py-3">Status</th>
                     </tr>
                   </thead>
@@ -625,6 +699,17 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                             </td>
                             <td className="px-4 py-2 text-xs">{item.closingDay || '-'}</td>
                             <td className="px-4 py-2 text-xs">{item.dueDay || '-'}</td>
+                          </>
+                        )}
+
+                        {item.kind === 'budget' && (
+                          <>
+                            <td className="px-4 py-2 font-medium">{item.categoryName}</td>
+                            <td className="px-4 py-2 text-xs">{item.month + 1}</td>
+                            <td className="px-4 py-2 text-xs">{item.year}</td>
+                            <td className="px-4 py-2">
+                              {item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </td>
                           </>
                         )}
 

@@ -745,7 +745,7 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <p className="text-sm text-slate-500 font-medium mb-1">Entradas (Realizadas)</p>
-            <p className="text-2xl font-bold text-emerald-600">
+            <p className="text-xl font-bold text-emerald-600 tracking-tight">
               {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
             <p className="text-xs text-slate-400 mt-1">
@@ -754,7 +754,7 @@ const App: React.FC = () => {
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <p className="text-sm text-slate-500 font-medium mb-1">Saídas (Realizadas)</p>
-            <p className="text-2xl font-bold text-rose-600">
+            <p className="text-xl font-bold text-rose-600 tracking-tight">
               {totalExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
             <p className="text-xs text-slate-400 mt-1">
@@ -763,13 +763,13 @@ const App: React.FC = () => {
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <p className="text-sm text-slate-500 font-medium mb-1">Saldo Líquido</p>
-            <p className={`text-2xl font-bold ${balance >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>
+            <p className={`text-xl font-bold tracking-tight ${balance >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>
               {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <p className="text-sm text-slate-500 font-medium mb-1">Saldo Real (c/ Inicial)</p>
-            <p className={`text-2xl font-bold ${balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0) >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+            <p className={`text-xl font-bold tracking-tight ${balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0) >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
               {(balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
@@ -973,6 +973,7 @@ const App: React.FC = () => {
         onImport={handleImportSuccess}
         onImportCategories={handleImportCategories}
         onImportAccounts={handleImportAccounts}
+        onImportBudgets={handleSaveBulkBudgets}
         availableCategories={categories}
         availableAccounts={accounts}
       />
