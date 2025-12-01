@@ -130,7 +130,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
   // 1. Total Budgeted for the specific month view
   const monthlyTotalBudgeted = budgets
-    .filter(b => b.month === selectedMonth && b.year === selectedYear)
+    .filter(b => b.month === selectedMonth + 1 && b.year === selectedYear) // Read as 1-indexed
     .reduce((acc, b) => acc + b.amount, 0);
 
   // 2. Total Realized for the specific month view (All Expenses)
@@ -190,7 +190,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
 
   const getPlannedAmount = (categoryId: string) => {
-    return budgets.find(b => b.categoryId === categoryId && b.month === selectedMonth && b.year === selectedYear)?.amount || 0;
+    return budgets.find(b => b.categoryId === categoryId && b.month === selectedMonth + 1 && b.year === selectedYear)?.amount || 0; // Read as 1-indexed
   };
 
   const getRealizedAmount = (categoryName: string) => {
@@ -229,15 +229,14 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     const newBudgets: Budget[] = [];
     expenseCategories.forEach(cat => {
       const realized = getRealizedAmount(cat.name);
-      if (realized > 0) {
-        newBudgets.push({
-          id: `${cat.id}-${selectedMonth}-${selectedYear}`,
-          categoryId: cat.id,
-          month: selectedMonth + 1, // API expects 1-indexed month
-          year: selectedYear,
-          amount: realized
-        });
-      }
+      // Always add to list to sync, even if 0 (to overwrite existing budget if needed)
+      newBudgets.push({
+        id: `${cat.id}-${selectedMonth}-${selectedYear}`,
+        categoryId: cat.id,
+        month: selectedMonth + 1, // API expects 1-indexed month
+        year: selectedYear,
+        amount: realized
+      });
     });
 
     if (newBudgets.length > 0) {
@@ -245,7 +244,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
         onSaveBudgets(newBudgets);
       }
     } else {
-      alert('Não há valores realizados para copiar neste mês.');
+      alert('Não há categorias para sincronizar.');
     }
   };
 
@@ -360,7 +359,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                   let currentY = startY;
 
                   while (currentY < endY || (currentY === endY && currentM <= endM)) {
-                    const planned = budgets.find(b => b.categoryId === xRayCategoryId && b.month === currentM && b.year === currentY)?.amount || 0;
+                    const planned = budgets.find(b => b.categoryId === xRayCategoryId && b.month === currentM + 1 && b.year === currentY)?.amount || 0; // Read as 1-indexed
 
                     const catName = categories.find(c => c.id === xRayCategoryId)?.name || '';
 
@@ -495,7 +494,6 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
           className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-200"
         >
           <PieChart size={16} />
-          <PieChart size={16} />
           Editar Ano Inteiro
         </button>
 
@@ -573,7 +571,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       {/* 4. Budget List - Grouped by Fixed/Variable */}
       <div className="space-y-8">
         {/* Fixed Expenses */}
-        <div>
+        <div className="border border-slate-200 rounded-xl p-6 bg-white shadow-sm">
           <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
             <span className="w-2 h-8 bg-blue-500 rounded-full"></span>
             Despesas Fixas
@@ -599,7 +597,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
         </div>
 
         {/* Variable Expenses */}
-        <div>
+        <div className="border border-slate-200 rounded-xl p-6 bg-white shadow-sm">
           <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
             <span className="w-2 h-8 bg-amber-500 rounded-full"></span>
             Despesas Variáveis
@@ -707,7 +705,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                           const catName = categories.find(c => c.id === b.categoryId)?.name || 'Desconhecida';
                           return (
                             <tr key={b.id} className="hover:bg-slate-50">
-                              <td className="px-6 py-3 text-slate-600">{months[b.month]}/{b.year}</td>
+                              <td className="px-6 py-3 text-slate-600">{months[b.month]} / {b.year}</td>
                               <td className="px-6 py-3 font-medium text-slate-800">{catName}</td>
                               <td className="px-6 py-3 text-right font-bold text-blue-600">
                                 {b.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -815,7 +813,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
               <div className="text-sm">
                 <span className="text-slate-500 mr-2">Orçado:</span>
                 <span className="font-bold text-blue-600">
-                  {(budgets.find(b => b.categoryId === xRayDetailsData.categoryId && b.month === xRayDetailsData.month && b.year === xRayDetailsData.year)?.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {(budgets.find(b => b.categoryId === xRayDetailsData.categoryId && b.month === xRayDetailsData.month + 1 && b.year === xRayDetailsData.year)?.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </div>
               <div className="text-sm">

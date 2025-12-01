@@ -523,12 +523,10 @@ const App: React.FC = () => {
 
   const handleSaveBulkBudgets = async (newBudgets: Budget[]) => {
     try {
-      const saved = await budgetService.createBatch(newBudgets);
-      setBudgets(prev => {
-        const newIds = new Set(saved.map(b => b.id));
-        const filteredPrev = prev.filter(b => !newIds.has(b.id));
-        return [...filteredPrev, ...saved];
-      });
+      await budgetService.createBatch(newBudgets);
+      // Refetch all budgets to ensure sync with DB
+      const allBudgets = await budgetService.getAll();
+      setBudgets(allBudgets);
     } catch (error) {
       console.error("Failed to save budgets", error);
       alert("Erro ao salvar orçamentos.");
