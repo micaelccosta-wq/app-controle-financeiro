@@ -115,18 +115,24 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     })
     .reduce((acc, t) => {
       if (t.split && t.split.length > 0) {
-        // Sum only splits that impact budget
+        // Sum only splits that match a displayed category
         const splitSum = t.split.reduce((sAcc, s) => {
           let catName = s.categoryName;
           if (catName.includes(':')) catName = catName.split(':')[0].trim();
-          return doesCategoryImpactBudget(catName) ? sAcc + s.amount : sAcc;
+
+          // Check if this category is in our displayed list
+          const isDisplayed = expenseCategories.some(c => c.name === catName);
+          return isDisplayed ? sAcc + s.amount : sAcc;
         }, 0);
         return acc + splitSum;
       } else {
         // Single category
         let catName = t.category;
         if (catName.includes(':')) catName = catName.split(':')[0].trim();
-        return doesCategoryImpactBudget(catName) ? acc + t.amount : acc;
+
+        // Check if this category is in our displayed list
+        const isDisplayed = expenseCategories.some(c => c.name === catName);
+        return isDisplayed ? acc + t.amount : acc;
       }
     }, 0);
 
