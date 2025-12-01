@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Category, Transaction, Budget, TransactionType } from '../types';
-import { ChevronLeft, ChevronRight, AlertCircle, ArrowRightLeft, Wallet, PieChart, TrendingUp, Layers, ShoppingBag, Activity, X, Calendar, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertCircle, ArrowRightLeft, Wallet, PieChart, TrendingUp, Layers, ShoppingBag, Activity, X, Calendar, Filter, RefreshCw, BarChart2 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import BudgetReallocationModal from './BudgetReallocationModal';
 import BudgetYearlyEditModal from './BudgetYearlyEditModal';
+import { CategorySubtype } from '../types';
 
 interface BudgetViewProps {
   categories: Category[];
@@ -58,8 +60,15 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
   const [reallocationSource, setReallocationSource] = useState<{ id: string; name: string; remaining: number; currentBudget: number } | null>(null);
   const [isReallocationOpen, setIsReallocationOpen] = useState(false);
 
+  // X-Ray State
+  const [xRayCategoryId, setXRayCategoryId] = useState<string>('');
+  const [xRayDetailsOpen, setXRayDetailsOpen] = useState(false);
+  const [xRayDetailsData, setXRayDetailsData] = useState<{ month: number; year: number; categoryId: string; categoryName: string } | null>(null);
+
   // Filter Categories for the list (Moved up to be available for calculations)
   const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE && c.impactsBudget);
+  const fixedCategories = expenseCategories.filter(c => c.subtype === CategorySubtype.FIXED);
+  const variableCategories = expenseCategories.filter(c => c.subtype === CategorySubtype.VARIABLE);
 
   const months = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -210,10 +219,34 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     onSaveBudget({
       id: `${categoryId}-${selectedMonth}-${selectedYear}`,
       categoryId,
-      month: selectedMonth,
+      month: selectedMonth + 1, // API expects 1-indexed month
       year: selectedYear,
       amount: numValue
     });
+  };
+
+  const handleSyncRealizedToPlanned = () => {
+    const newBudgets: Budget[] = [];
+    expenseCategories.forEach(cat => {
+      const realized = getRealizedAmount(cat.name);
+      if (realized > 0) {
+        newBudgets.push({
+          id: `${cat.id}-${selectedMonth}-${selectedYear}`,
+          categoryId: cat.id,
+          month: selectedMonth + 1, // API expects 1-indexed month
+          year: selectedYear,
+          amount: realized
+        });
+      }
+    });
+
+    if (newBudgets.length > 0) {
+      if (window.confirm(`Deseja atualizar o orçamento de ${newBudgets.length} categorias para igualar ao valor realizado?`)) {
+        onSaveBudgets(newBudgets);
+      }
+    } else {
+      alert('Não há valores realizados para copiar neste mês.');
+    }
   };
 
   // Reallocation Logic
@@ -274,6 +307,124 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
           >
             Limpar Filtros
           </button>
+        )}
+      </div>
+
+      {/* Category X-Ray Section */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+            <BarChart2 size={24} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">Raio-X da Categoria</h3>
+            <p className="text-sm text-slate-500">Acompanhe a evolução do planejado vs realizado</p>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-slate-700 mb-2">Selecione uma Categoria</label>
+          <select
+            value={xRayCategoryId}
+            onChange={(e) => setXRayCategoryId(e.target.value)}
+            className="w-full md:w-1/3 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+          >
+            <option value="">Selecione...</option>
+            {expenseCategories.sort((a, b) => a.name.localeCompare(b.name)).map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {xRayCategoryId && (
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={(() => {
+                  const data = [];
+                  let startM = 0;
+                  let startY = selectedYear;
+                  let endM = 11;
+                  let endY = selectedYear;
+
+                  if (filterStartDate && filterEndDate) {
+                    const start = new Date(filterStartDate);
+                    const end = new Date(filterEndDate);
+                    startM = start.getMonth();
+                    startY = start.getFullYear();
+                    endM = end.getMonth();
+                    endY = end.getFullYear();
+                  }
+
+                  let currentM = startM;
+                  let currentY = startY;
+
+                  while (currentY < endY || (currentY === endY && currentM <= endM)) {
+                    const planned = budgets.find(b => b.categoryId === xRayCategoryId && b.month === currentM && b.year === currentY)?.amount || 0;
+
+                    const catName = categories.find(c => c.id === xRayCategoryId)?.name || '';
+
+                    const realized = transactions
+                      .filter(t => {
+                        return t.type === TransactionType.EXPENSE && isTransactionInMonth(t, currentM, currentY);
+                      })
+                      .reduce((acc, curr) => {
+                        if (curr.split && curr.split.length > 0) {
+                          const splitForCat = curr.split.find(s => {
+                            let sName = s.categoryName;
+                            if (sName.includes(':')) sName = sName.split(':')[0].trim();
+                            return sName === catName;
+                          });
+                          return acc + (splitForCat ? splitForCat.amount : 0);
+                        } else {
+                          let cName = curr.category;
+                          if (cName.includes(':')) cName = cName.split(':')[0].trim();
+                          return cName === catName ? acc + curr.amount : acc;
+                        }
+                      }, 0);
+
+                    data.push({
+                      name: `${months[currentM].substring(0, 3)}/${currentY}`,
+                      month: currentM,
+                      year: currentY,
+                      Planejado: planned,
+                      Realizado: realized
+                    });
+
+                    currentM++;
+                    if (currentM > 11) {
+                      currentM = 0;
+                      currentY++;
+                    }
+                  }
+                  return data;
+                })()}
+                onClick={(data) => {
+                  if (data && data.activePayload && data.activePayload[0]) {
+                    const payload = data.activePayload[0].payload;
+                    setXRayDetailsData({
+                      month: payload.month,
+                      year: payload.year,
+                      categoryId: xRayCategoryId,
+                      categoryName: categories.find(c => c.id === xRayCategoryId)?.name || ''
+                    });
+                    setXRayDetailsOpen(true);
+                  }
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(value) => `R$ ${value}`} />
+                <Tooltip
+                  formatter={(value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Legend />
+                <Line type="monotone" dataKey="Planejado" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="Realizado" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, fill: '#f43f5e', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </div>
 
@@ -344,7 +495,17 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
           className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-200"
         >
           <PieChart size={16} />
+          <PieChart size={16} />
           Editar Ano Inteiro
+        </button>
+
+        <button
+          onClick={handleSyncRealizedToPlanned}
+          className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors border border-emerald-200 ml-2"
+          title="Copiar valores realizados para o orçamento"
+        >
+          <RefreshCw size={16} />
+          Copiar Realizado
         </button>
       </div>
 
@@ -409,83 +570,59 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       </div>
 
       {/* 4. Budget List */}
-      <div className="grid grid-cols-1 gap-4">
-        {expenseCategories.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
-            Nenhuma categoria de despesa marcada para orçamento.
-          </div>
-        ) : (
-          expenseCategories.map(cat => {
-            const planned = getPlannedAmount(cat.id);
-            const realized = getRealizedAmount(cat.name);
-            const percentage = planned > 0 ? Math.min((realized / planned) * 100, 100) : (realized > 0 ? 100 : 0);
-
-            let barColor = 'bg-blue-500';
-            if (percentage > 85) barColor = 'bg-amber-500';
-            if (percentage >= 100 || (planned === 0 && realized > 0)) barColor = 'bg-rose-500';
-
-            const remaining = Math.max(0, planned - realized);
-
-            return (
-              <div key={cat.id} className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 group">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-semibold text-slate-800">{cat.name}</h3>
-                    <span className="text-xs text-slate-500">{cat.subtype}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {/* Reallocation Button - Only if there is surplus budget */}
-                    {remaining > 0 && planned > 0 && (
-                      <button
-                        onClick={() => handleOpenReallocation(cat, remaining, planned)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-600 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2 py-1 rounded border border-slate-200"
-                        title="Remanejar saldo restante para outras categorias"
-                      >
-                        <ArrowRightLeft size={14} />
-                        Remanejar
-                      </button>
-                    )}
-
-                    <div className="flex flex-col items-end">
-                      <label className="text-xs text-slate-500 mb-1">Meta Mensal</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-xs text-slate-400">R$</span>
-                        <span className="absolute left-3 top-2 text-xs text-slate-400">R$</span>
-                        <BudgetInput
-                          initialValue={planned}
-                          onSave={(val) => handleBudgetChange(cat.id, val)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden mb-2">
-                  <div
-                    className={`absolute top-0 left-0 h-full ${barColor} transition-all duration-500 ease-out`}
-                    style={{ width: `${percentage}%` }}
-                  ></div>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span className={`font-medium ${realized > planned && planned > 0 ? 'text-rose-600' : 'text-slate-600'}`}>
-                    Realizado: {realized.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </span>
-                  <span className="text-slate-500">
-                    Restante: <span className="font-medium text-slate-700">{remaining.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                  </span>
-                </div>
-
-                {realized > planned && planned > 0 && (
-                  <div className="mt-2 flex items-center gap-1 text-xs text-rose-600 bg-rose-50 p-2 rounded">
-                    <AlertCircle size={12} />
-                    Orçamento estourado em {(realized - planned).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </div>
-                )}
+      {/* 4. Budget List - Grouped by Fixed/Variable */}
+      <div className="space-y-8">
+        {/* Fixed Expenses */}
+        <div>
+          <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+            <span className="w-2 h-8 bg-blue-500 rounded-full"></span>
+            Despesas Fixas
+          </h3>
+          <div className="grid grid-cols-1 gap-4">
+            {fixedCategories.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                Nenhuma despesa fixa encontrada.
               </div>
-            );
-          })
-        )}
+            ) : (
+              fixedCategories.map(cat => (
+                <BudgetCard
+                  key={cat.id}
+                  cat={cat}
+                  planned={getPlannedAmount(cat.id)}
+                  realized={getRealizedAmount(cat.name)}
+                  onBudgetChange={handleBudgetChange}
+                  onReallocate={handleOpenReallocation}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Variable Expenses */}
+        <div>
+          <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+            <span className="w-2 h-8 bg-amber-500 rounded-full"></span>
+            Despesas Variáveis
+          </h3>
+          <div className="grid grid-cols-1 gap-4">
+            {variableCategories.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                Nenhuma despesa variável encontrada.
+              </div>
+            ) : (
+              variableCategories.map(cat => (
+                <BudgetCard
+                  key={cat.id}
+                  cat={cat}
+                  planned={getPlannedAmount(cat.id)}
+                  realized={getRealizedAmount(cat.name)}
+                  onBudgetChange={handleBudgetChange}
+                  onReallocate={handleOpenReallocation}
+                />
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       <BudgetReallocationModal
@@ -598,8 +735,207 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
           </div>
         </div>
       )}
+
+      {/* X-Ray Details Modal */}
+      {xRayDetailsOpen && xRayDetailsData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="font-bold text-slate-800 text-lg">Detalhamento: {xRayDetailsData.categoryName}</h3>
+                <p className="text-sm text-slate-500">{months[xRayDetailsData.month]}/{xRayDetailsData.year}</p>
+              </div>
+              <button onClick={() => setXRayDetailsOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-0">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 shadow-sm">
+                  <tr>
+                    <th className="px-6 py-3">Data</th>
+                    <th className="px-6 py-3">Descrição</th>
+                    <th className="px-6 py-3 text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(() => {
+                    const txs = transactions.filter(t => {
+                      if (t.type !== TransactionType.EXPENSE) return false;
+                      if (!isTransactionInMonth(t, xRayDetailsData.month, xRayDetailsData.year)) return false;
+
+                      if (t.split && t.split.length > 0) {
+                        return t.split.some(s => {
+                          let sName = s.categoryName;
+                          if (sName.includes(':')) sName = sName.split(':')[0].trim();
+                          return sName === xRayDetailsData.categoryName;
+                        });
+                      } else {
+                        let cName = t.category;
+                        if (cName.includes(':')) cName = cName.split(':')[0].trim();
+                        return cName === xRayDetailsData.categoryName;
+                      }
+                    });
+
+                    if (txs.length === 0) {
+                      return <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">Nenhuma transação encontrada.</td></tr>;
+                    }
+
+                    return txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(t => {
+                      let amount = t.amount;
+                      if (t.split && t.split.length > 0) {
+                        const split = t.split.find(s => {
+                          let sName = s.categoryName;
+                          if (sName.includes(':')) sName = sName.split(':')[0].trim();
+                          return sName === xRayDetailsData.categoryName;
+                        });
+                        amount = split ? split.amount : 0;
+                      }
+
+                      return (
+                        <tr key={t.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-3 text-slate-600">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                          <td className="px-6 py-3 font-medium text-slate-800">
+                            {t.description}
+                            {t.split && t.split.length > 0 && <span className="text-xs text-blue-500 ml-1">(Split)</span>}
+                          </td>
+                          <td className="px-6 py-3 text-right font-bold text-rose-600">
+                            {amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+              <div className="text-sm">
+                <span className="text-slate-500 mr-2">Orçado:</span>
+                <span className="font-bold text-blue-600">
+                  {(budgets.find(b => b.categoryId === xRayDetailsData.categoryId && b.month === xRayDetailsData.month && b.year === xRayDetailsData.year)?.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+              <div className="text-sm">
+                <span className="text-slate-500 mr-2">Realizado Total:</span>
+                <span className="font-bold text-rose-600">
+                  {(() => {
+                    const txs = transactions.filter(t => {
+                      if (t.type !== TransactionType.EXPENSE) return false;
+                      if (!isTransactionInMonth(t, xRayDetailsData.month, xRayDetailsData.year)) return false;
+
+                      if (t.split && t.split.length > 0) {
+                        return t.split.some(s => {
+                          let sName = s.categoryName;
+                          if (sName.includes(':')) sName = sName.split(':')[0].trim();
+                          return sName === xRayDetailsData.categoryName;
+                        });
+                      } else {
+                        let cName = t.category;
+                        if (cName.includes(':')) cName = cName.split(':')[0].trim();
+                        return cName === xRayDetailsData.categoryName;
+                      }
+                    });
+
+                    return txs.reduce((acc, t) => {
+                      let amount = t.amount;
+                      if (t.split && t.split.length > 0) {
+                        const split = t.split.find(s => {
+                          let sName = s.categoryName;
+                          if (sName.includes(':')) sName = sName.split(':')[0].trim();
+                          return sName === xRayDetailsData.categoryName;
+                        });
+                        amount = split ? split.amount : 0;
+                      }
+                      return acc + amount;
+                    }, 0);
+                  })().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default BudgetView;
+
+interface BudgetCardProps {
+  cat: Category;
+  planned: number;
+  realized: number;
+  onBudgetChange: (categoryId: string, value: string) => void;
+  onReallocate: (category: Category, remaining: number, currentBudget: number) => void;
+}
+
+const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudgetChange, onReallocate }) => {
+  const percentage = planned > 0 ? Math.min((realized / planned) * 100, 100) : (realized > 0 ? 100 : 0);
+
+  let barColor = 'bg-blue-500';
+  if (percentage > 85) barColor = 'bg-amber-500';
+  if (percentage >= 100 || (planned === 0 && realized > 0)) barColor = 'bg-rose-500';
+
+  const remaining = Math.max(0, planned - realized);
+
+  return (
+    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 group">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="font-semibold text-slate-800">{cat.name}</h3>
+          <span className="text-xs text-slate-500">{cat.subtype}</span>
+        </div>
+        <div className="flex items-center gap-4">
+          {/* Reallocation Button - Only if there is surplus budget */}
+          {remaining > 0 && planned > 0 && (
+            <button
+              onClick={() => onReallocate(cat, remaining, planned)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-600 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2 py-1 rounded border border-slate-200"
+              title="Remanejar saldo restante para outras categorias"
+            >
+              <ArrowRightLeft size={14} />
+              Remanejar
+            </button>
+          )}
+
+          <div className="flex flex-col items-end">
+            <label className="text-xs text-slate-500 mb-1">Meta Mensal</label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-xs text-slate-400">R$</span>
+              <BudgetInput
+                initialValue={planned}
+                onSave={(val) => onBudgetChange(cat.id, val)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden mb-2">
+        <div
+          className={`absolute top-0 left-0 h-full ${barColor} transition-all duration-500 ease-out`}
+          style={{ width: `${percentage}%` }}
+        ></div>
+      </div>
+
+      <div className="flex justify-between text-sm">
+        <span className={`font-medium ${realized > planned && planned > 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+          Realizado: {realized.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+        </span>
+        <span className="text-slate-500">
+          Restante: <span className="font-medium text-slate-700">{remaining.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+        </span>
+      </div>
+
+      {realized > planned && planned > 0 && (
+        <div className="mt-2 flex items-center gap-1 text-xs text-rose-600 bg-rose-50 p-2 rounded">
+          <AlertCircle size={12} />
+          Orçamento estourado em {(realized - planned).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+        </div>
+      )}
+    </div>
+  );
+};
