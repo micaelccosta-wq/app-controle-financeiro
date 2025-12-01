@@ -1,54 +1,160 @@
 
-import React from 'react';
-import { Transaction, TransactionType, Category } from '../types';
-import { PieChart, BarChart } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Transaction, TransactionType, Category, Budget } from '../types';
+import { PieChart, BarChart as BarChartIcon, TrendingUp, X, Filter } from 'lucide-react';
+import {
+   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+   BarChart, Bar, Cell
+} from 'recharts';
 
 interface ReportsViewProps {
    transactions: Transaction[];
    categories: Category[];
+   budgets: Budget[];
 }
 
-const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories }) => {
+const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories, budgets }) => {
+   // Date Filters
+   const [startDate, setStartDate] = useState('');
+   const [endDate, setEndDate] = useState('');
 
-   // Filter out credit card holds (keep only actual payments or non-cc transactions)
-   const validTransactions = transactions.filter(t => !t.description.startsWith('Fatura '));
+   // Modal State
+   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+   const [selectedPointData, setSelectedPointData] = useState<{
+      label: string;
+      income: number;
+      expense: number;
+      transactions: Transaction[];
+   } | null>(null);
 
-   // --- Expenses by Category ---
-   const expensesByCategory: Record<string, number> = validTransactions
-      .filter(t => t.type === TransactionType.EXPENSE)
-      .reduce((acc, t) => {
-         if (t.split && t.split.length > 0) {
-            // Handle Split
-            t.split.forEach(s => {
-               // Clean category name just in case (though split.categoryName should be clean)
-               let catName = s.categoryName;
-               if (catName.includes(':')) {
-                  catName = catName.split(':')[0].trim();
-               }
-               acc[catName] = (acc[catName] || 0) + s.amount;
-            });
-         } else {
-            // Regular
-            let catName = t.category;
-            // Clean category name to avoid "Category: 100" duplicates
-            if (catName.includes(':')) {
-               catName = catName.split(':')[0].trim();
+   // Helper: Date Filtering
+   const isDateInRange = (dateStr: string) => {
+      if (!startDate && !endDate) return true;
+      if (startDate && dateStr < startDate) return false;
+      if (endDate && dateStr > endDate) return false;
+      return true;
+   };
+
+   // Helper: Check if budget is in range (approximate by month)
+   const isBudgetInRange = (month: number, year: number) => {
+      if (!startDate && !endDate) return true;
+      const budgetDateStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      // Simple logic: if budget month starts within range or overlaps
+      // For simplicity, let's check if the 1st of the month is in range
+      if (startDate && budgetDateStr < startDate) return false;
+      if (endDate && budgetDateStr > endDate) return false;
+      return true;
+   };
+
+   // Filter Transactions
+   const filteredTransactions = useMemo(() => {
+      return transactions.filter(t =>
+         !t.description.startsWith('Fatura ') && // Exclude CC holds
+         !t.ignoreInBudget &&
+         isDateInRange(t.date)
+      );
+   }, [transactions, startDate, endDate]);
+
+   // --- 1. Expenses by Category (Pie/Donut) ---
+   const expensesByCategory = useMemo(() => {
+      return filteredTransactions
+         .filter(t => t.type === TransactionType.EXPENSE)
+         .reduce((acc, t) => {
+            if (t.split && t.split.length > 0) {
+               t.split.forEach(s => {
+                  let catName = s.categoryName;
+                  if (catName.includes(':')) catName = catName.split(':')[0].trim();
+                  acc[catName] = (acc[catName] || 0) + s.amount;
+               });
+            } else {
+               let catName = t.category;
+               if (catName.includes(':')) catName = catName.split(':')[0].trim();
+               acc[catName] = (acc[catName] || 0) + t.amount;
             }
-            acc[catName] = (acc[catName] || 0) + t.amount;
-         }
-         return acc;
-      }, {} as Record<string, number>);
+            return acc;
+         }, {} as Record<string, number>);
+   }, [filteredTransactions]);
 
-   const totalExpenses = Object.values(expensesByCategory).reduce((a: number, b: number) => a + b, 0);
+   const totalExpenses = Object.values(expensesByCategory).reduce((a, b) => a + b, 0);
 
-   const categoryData = Object.entries(expensesByCategory)
-      .sort(([, a], [, b]) => b - a)
-      .map(([name, value], index) => ({
-         name,
-         value,
-         percentage: totalExpenses > 0 ? (value / totalExpenses) * 100 : 0,
-         color: `hsl(${index * 40 + 200}, 70%, 50%)` // Generate colors
-      }));
+   const categoryData = useMemo(() => {
+      return Object.entries(expensesByCategory)
+         .sort(([, a], [, b]) => b - a)
+         .map(([name, value], index) => ({
+            name,
+            value,
+            percentage: totalExpenses > 0 ? (value / totalExpenses) * 100 : 0,
+            color: `hsl(${index * 40 + 200}, 70%, 50%)`
+         }));
+   }, [expensesByCategory, totalExpenses]);
+
+   // --- 2. Income vs Expense (Line Chart) ---
+   const lineChartData = useMemo(() => {
+      // Group by Month (YYYY-MM)
+      const grouped: Record<string, { income: number; expense: number; transactions: Transaction[] }> = {};
+
+      // If range is small (e.g. < 2 months), maybe group by Day?
+      // For now, let's stick to Monthly for robustness, or Daily if range is short.
+      // Let's implement Monthly for now as it's standard.
+
+      // Initialize with range if possible, or just from data
+      // To ensure continuity, we should find min/max date
+
+      filteredTransactions.forEach(t => {
+         const key = t.date.substring(0, 7); // YYYY-MM
+         if (!grouped[key]) grouped[key] = { income: 0, expense: 0, transactions: [] };
+
+         if (t.type === TransactionType.INCOME) grouped[key].income += t.amount;
+         else grouped[key].expense += t.amount;
+
+         grouped[key].transactions.push(t);
+      });
+
+      return Object.entries(grouped)
+         .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+         .map(([key, data]) => {
+            const [y, m] = key.split('-');
+            const dateObj = new Date(parseInt(y), parseInt(m) - 1, 1);
+            return {
+               name: dateObj.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+               fullDate: key,
+               ...data
+            };
+         });
+   }, [filteredTransactions]);
+
+   // --- 3. Planned vs Executed (Bar Chart) ---
+   const plannedVsExecutedData = useMemo(() => {
+      // 1. Get all expense categories that impact budget
+      const expenseCats = categories.filter(c => c.type === TransactionType.EXPENSE && c.impactsBudget);
+
+      // 2. Calculate Planned (Budget) for filtered period
+      // 3. Calculate Executed (Realized) for filtered period
+
+      return expenseCats.map(cat => {
+         // Planned
+         const catBudgets = budgets.filter(b =>
+            b.categoryId === cat.id && isBudgetInRange(b.month, b.year)
+         );
+         const planned = catBudgets.reduce((acc, b) => acc + b.amount, 0);
+
+         // Executed
+         // We already have expensesByCategory which is filtered by date
+         // But we need to make sure we match the category ID/Name correctly
+         // expensesByCategory uses Name.
+         const executed = expensesByCategory[cat.name] || 0;
+
+         return {
+            name: cat.name,
+            planned,
+            executed,
+            amt: Math.max(planned, executed) // for domain calc if needed
+         };
+      })
+         .filter(d => d.planned > 0 || d.executed > 0) // Hide empty
+         .sort((a, b) => b.executed - a.executed); // Sort by highest spend
+
+   }, [categories, budgets, expensesByCategory, startDate, endDate]); // expensesByCategory depends on filteredTransactions
 
    const formatCurrency = (val: number) => {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -58,43 +164,159 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories }) =
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
    };
 
-   // --- Income vs Expense (Last 6 Months) ---
-   const last6Months: { key: string; label: string; income: number; expense: number }[] = [];
-   const today = new Date();
-   for (let i = 5; i >= 0; i--) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const label = d.toLocaleDateString('pt-BR', { month: 'short' });
-      last6Months.push({ key: monthKey, label, income: 0, expense: 0 });
-   }
-
-   validTransactions.forEach(t => {
-      // Use ISO date prefix YYYY-MM
-      const tKey = t.date.substring(0, 7);
-      const period = last6Months.find(p => p.key === tKey);
-      if (period) {
-         if (t.type === TransactionType.INCOME) period.income += t.amount;
-         else period.expense += t.amount;
+   const handleLineClick = (data: any) => {
+      if (data && data.activePayload && data.activePayload.length > 0) {
+         const payload = data.activePayload[0].payload;
+         setSelectedPointData({
+            label: payload.name,
+            income: payload.income,
+            expense: payload.expense,
+            transactions: payload.transactions
+         });
+         setDetailsModalOpen(true);
       }
-   });
-
-   const maxVal = Math.max(
-      ...last6Months.map(m => Math.max(m.income, m.expense)),
-      100 // min scale
-   );
+   };
 
    return (
-      <div className="space-y-6">
+      <div className="space-y-8">
 
-         {/* 1. Category Breakdown */}
+         {/* Filters */}
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-4">
+            <div className="flex items-center gap-2 text-slate-500 mb-3 mr-2">
+               <Filter size={20} />
+               <span className="font-bold">Filtros</span>
+            </div>
+            <div>
+               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">De</label>
+               <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+               />
+            </div>
+            <div>
+               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Até</label>
+               <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+               />
+            </div>
+            {(startDate || endDate) && (
+               <button
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  className="text-xs text-rose-600 hover:text-rose-700 font-medium hover:underline mb-3"
+               >
+                  Limpar
+               </button>
+            )}
+         </div>
+
+         {/* 1. Income vs Expense (Dynamic Line Chart) */}
          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-               <PieChart className="text-blue-600" size={20} />
-               Despesas por Categoria
+               <TrendingUp className="text-emerald-600" size={20} />
+               Evolução: Receitas x Despesas
+            </h3>
+            <div className="h-80 w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                     data={lineChartData}
+                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                     onClick={handleLineClick}
+                  >
+                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                     <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                        dy={10}
+                     />
+                     <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                        tickFormatter={(value) => `R$ ${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}`}
+                     />
+                     <Tooltip
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: number) => formatCurrency(value)}
+                        cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' }}
+                     />
+                     <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                     <Line
+                        type="monotone"
+                        dataKey="income"
+                        name="Receitas"
+                        stroke="#10b981"
+                        strokeWidth={3}
+                        dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
+                        activeDot={{ r: 8, strokeWidth: 0 }}
+                     />
+                     <Line
+                        type="monotone"
+                        dataKey="expense"
+                        name="Despesas"
+                        stroke="#f43f5e"
+                        strokeWidth={3}
+                        dot={{ r: 4, fill: '#f43f5e', strokeWidth: 0 }}
+                        activeDot={{ r: 8, strokeWidth: 0 }}
+                     />
+                  </LineChart>
+               </ResponsiveContainer>
+            </div>
+            <p className="text-xs text-slate-400 text-center mt-2">
+               Clique em um ponto do gráfico para ver os detalhes.
+            </p>
+         </div>
+
+         {/* 2. Planned vs Executed (Bar Chart) */}
+         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+               <BarChartIcon className="text-blue-600" size={20} />
+               Planejado x Executado (Por Categoria)
+            </h3>
+            <div className="h-[500px] w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                     layout="vertical"
+                     data={plannedVsExecutedData}
+                     margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                  >
+                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                     <XAxis type="number" hide />
+                     <YAxis
+                        dataKey="name"
+                        type="category"
+                        width={120}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#475569', fontSize: 12, fontWeight: 500 }}
+                     />
+                     <Tooltip
+                        cursor={{ fill: '#f1f5f9' }}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: number) => formatCurrency(value)}
+                     />
+                     <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                     <Bar dataKey="planned" name="Planejado" fill="#94a3b8" radius={[0, 4, 4, 0]} barSize={12} />
+                     <Bar dataKey="executed" name="Executado" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={12} />
+                  </BarChart>
+               </ResponsiveContainer>
+            </div>
+         </div>
+
+         {/* 3. Expenses by Category (Pie) */}
+         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+               <PieChart className="text-purple-600" size={20} />
+               Distribuição de Despesas
             </h3>
 
             <div className="flex flex-col md:flex-row items-center gap-8">
-               {/* Simple CSS Conic Gradient Pie Chart */}
                <div
                   className="w-48 h-48 rounded-full shadow-inner relative flex items-center justify-center shrink-0"
                   style={{
@@ -111,7 +333,6 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories }) =
                   </div>
                </div>
 
-               {/* Legend */}
                <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {categoryData.map(d => (
                      <div key={d.name} className="flex items-center justify-between p-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
@@ -130,41 +351,65 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories }) =
                      </div>
                   ))}
                   {categoryData.length === 0 && (
-                     <p className="text-slate-400 text-sm">Nenhuma despesa registrada.</p>
+                     <p className="text-slate-400 text-sm">Nenhuma despesa no período.</p>
                   )}
                </div>
             </div>
          </div>
 
-         {/* 2. Monthly Evolution */}
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-               <BarChart className="text-purple-600" size={20} />
-               Evolução Mensal (Receita x Despesa)
-            </h3>
-
-            <div className="h-64 flex items-end justify-between gap-2 sm:gap-6 mt-4 pb-2 border-b border-slate-100">
-               {last6Months.map(m => (
-                  <div key={m.key} className="flex-1 flex flex-col justify-end items-center gap-2 h-full group">
-                     <div className="w-full flex justify-center items-end gap-1 h-full relative">
-                        {/* Income Bar */}
-                        <div
-                           className="w-3 sm:w-6 bg-emerald-400 rounded-t-sm hover:bg-emerald-500 transition-all relative"
-                           style={{ height: `${(m.income / maxVal) * 100}%` }}
-                           title={`Receita: ${m.income}`}
-                        ></div>
-                        {/* Expense Bar */}
-                        <div
-                           className="w-3 sm:w-6 bg-rose-400 rounded-t-sm hover:bg-rose-500 transition-all relative"
-                           style={{ height: `${(m.expense / maxVal) * 100}%` }}
-                           title={`Despesa: ${m.expense}`}
-                        ></div>
+         {/* Details Modal */}
+         {detailsModalOpen && selectedPointData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+               <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+                  <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                     <div>
+                        <h3 className="font-bold text-slate-800 text-lg">Detalhes: {selectedPointData.label}</h3>
+                        <p className="text-xs text-slate-500">
+                           Receitas: <span className="text-emerald-600 font-bold">{formatCurrency(selectedPointData.income)}</span> •
+                           Despesas: <span className="text-rose-600 font-bold ml-1">{formatCurrency(selectedPointData.expense)}</span>
+                        </p>
                      </div>
-                     <span className="text-xs font-medium text-slate-500 uppercase">{m.label}</span>
+                     <button onClick={() => setDetailsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                        <X size={24} />
+                     </button>
                   </div>
-               ))}
+
+                  <div className="flex-1 overflow-y-auto p-0">
+                     <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 shadow-sm">
+                           <tr>
+                              <th className="px-6 py-3">Data</th>
+                              <th className="px-6 py-3">Descrição</th>
+                              <th className="px-6 py-3">Categoria</th>
+                              <th className="px-6 py-3 text-right">Valor</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                           {selectedPointData.transactions.length > 0 ? (
+                              selectedPointData.transactions
+                                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                 .map(t => (
+                                    <tr key={t.id} className="hover:bg-slate-50">
+                                       <td className="px-6 py-3 text-slate-600">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                                       <td className="px-6 py-3 font-medium text-slate-800">{t.description}</td>
+                                       <td className="px-6 py-3 text-slate-500">
+                                          {t.category}
+                                          {t.split && t.split.length > 0 && <span className="text-xs text-blue-500 ml-1">(Split)</span>}
+                                       </td>
+                                       <td className={`px-6 py-3 text-right font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                          {t.type === TransactionType.EXPENSE ? '-' : '+'}{formatCurrency(t.amount)}
+                                       </td>
+                                    </tr>
+                                 ))
+                           ) : (
+                              <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Nenhum movimento neste período.</td></tr>
+                           )}
+                        </tbody>
+                     </table>
+                  </div>
+               </div>
             </div>
-         </div>
+         )}
 
       </div>
    );

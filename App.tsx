@@ -904,6 +904,7 @@ const App: React.FC = () => {
             <ReportsView
               transactions={transactions}
               categories={categories}
+              budgets={budgets}
             />
           </div>
         )}
