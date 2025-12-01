@@ -89,7 +89,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
     const currentM = today.getMonth() + 1;
     const currentY = today.getFullYear();
 
-    for (let i = -6; i <= 6; i++) {
+    for (let i = -36; i <= 6; i++) {
       let m = currentM + i;
       let y = currentY;
       while (m > 12) { m -= 12; y++; }
@@ -103,6 +103,30 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
     }
     return options;
   }, [isTargetCreditCard, importType]);
+
+  // Auto-select active invoice when account changes
+  React.useEffect(() => {
+    if (isTargetCreditCard && targetAccount && targetAccount.closingDay) {
+      const today = new Date();
+      const currentDay = today.getDate();
+      const currentMonth = today.getMonth() + 1;
+      const currentYear = today.getFullYear();
+
+      let targetM = currentMonth;
+      let targetY = currentYear;
+
+      if (currentDay >= targetAccount.closingDay) {
+        targetM += 1;
+        if (targetM > 12) {
+          targetM = 1;
+          targetY += 1;
+        }
+      }
+
+      const formatted = `${String(targetM).padStart(2, '0')}/${targetY}`;
+      setTargetInvoice(formatted);
+    }
+  }, [targetAccountId, isTargetCreditCard, targetAccount]);
 
   if (!isOpen) return null;
 
@@ -198,16 +222,23 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
           const amount = parseNumber(cols[2]?.trim());
           const rawType = cols[3]?.trim().toUpperCase();
 
-          // Reconstruct category from all remaining columns (in case it contains the delimiter)
-          // BUT now we have a new column at the end (IgnoreInBudget).
-          // We need to be careful. Let's assume the LAST column might be IgnoreInBudget if it matches SIM/NAO/YES/NO
-          // OR we stick to fixed index. The user asked to adjust layout.
-          // Let's assume fixed index: 
-          // 0: Date, 1: Desc, 2: Amount, 3: Type, 4: Category, 5: IgnoreInBudget
+          // Robust parsing for Category which might contain the separator (e.g. splits)
+          // Structure: Date(0), Desc(1), Val(2), Type(3), [Category Parts...], Ignore(Last?)
 
-          const rawCategory = cols[4]?.trim().replace(/"/g, '') || '';
-          const rawIgnore = cols[5]?.trim().toUpperCase();
-          const ignoreInBudget = (rawIgnore === 'SIM' || rawIgnore === 'YES' || rawIgnore === 'TRUE');
+          const lastCol = cols[cols.length - 1]?.trim().toUpperCase();
+          const isIgnoreFlag = ['SIM', 'NAO', 'YES', 'NO', 'TRUE', 'FALSE'].includes(lastCol);
+
+          let ignoreInBudget = false;
+          let categoryEndIndex = cols.length - 1;
+
+          if (isIgnoreFlag) {
+            ignoreInBudget = (lastCol === 'SIM' || lastCol === 'YES' || lastCol === 'TRUE');
+            categoryEndIndex = cols.length - 2;
+          }
+
+          // Reconstruct category from index 4 up to categoryEndIndex
+          // We join with the separator to restore the original string structure
+          const rawCategory = cols.slice(4, categoryEndIndex + 1).join(separator).replace(/"/g, '').trim();
 
           let isValid = true;
           let error = '';
