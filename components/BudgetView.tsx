@@ -100,12 +100,18 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     return cat ? cat.impactsBudget : true; // Default to true if unknown
   };
 
+  const isTransactionInMonth = (t: Transaction, targetMonth: number, targetYear: number) => {
+    if (t.invoiceMonth) {
+      const [mStr, yStr] = t.invoiceMonth.split('/');
+      return parseInt(mStr) === targetMonth + 1 && parseInt(yStr) === targetYear;
+    }
+    const [yStr, mStr] = t.date.split('-');
+    return parseInt(mStr) === targetMonth + 1 && parseInt(yStr) === targetYear;
+  };
+
   const monthlyTotalRealized = transactions
     .filter(t => {
-      const [yStr, mStr] = t.date.split('-');
-      const tYear = parseInt(yStr);
-      const tMonth = parseInt(mStr) - 1;
-      return t.type === TransactionType.EXPENSE && tMonth === selectedMonth && tYear === selectedYear;
+      return t.type === TransactionType.EXPENSE && isTransactionInMonth(t, selectedMonth, selectedYear);
     })
     .reduce((acc, t) => {
       if (t.split && t.split.length > 0) {
@@ -145,9 +151,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
   const getRealizedAmount = (categoryName: string) => {
     return transactions
       .filter(t => {
-        const tMonth = parseInt(t.date.split('-')[1]) - 1;
-        const tYear = parseInt(t.date.split('-')[0]);
-        return t.type === TransactionType.EXPENSE && tMonth === selectedMonth && tYear === selectedYear;
+        return t.type === TransactionType.EXPENSE && isTransactionInMonth(t, selectedMonth, selectedYear);
       })
       .reduce((acc, curr) => {
         if (curr.split && curr.split.length > 0) {
