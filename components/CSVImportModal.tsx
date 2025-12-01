@@ -204,6 +204,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
       const text = event.target?.result as string;
       const lines = text.split(/\r\n|\n/);
       const items: ParsedItem[] = [];
+      let foundInvoiceInCsv = false;
 
       const firstLine = lines[0] || '';
       const separator = firstLine.includes(';') ? ';' : ',';
