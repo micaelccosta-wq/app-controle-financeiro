@@ -58,6 +58,9 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
   const [reallocationSource, setReallocationSource] = useState<{ id: string; name: string; remaining: number; currentBudget: number } | null>(null);
   const [isReallocationOpen, setIsReallocationOpen] = useState(false);
 
+  // Filter Categories for the list (Moved up to be available for calculations)
+  const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE && c.impactsBudget);
+
   const months = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
@@ -175,8 +178,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
   if (monthlyPercentage >= 100 || (monthlyTotalBudgeted === 0 && monthlyTotalRealized > 0)) monthlyBarColor = 'bg-rose-500';
 
 
-  // 4. Filter Categories for the list
-  const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE && c.impactsBudget);
+
 
   const getPlannedAmount = (categoryId: string) => {
     return budgets.find(b => b.categoryId === categoryId && b.month === selectedMonth && b.year === selectedYear)?.amount || 0;
