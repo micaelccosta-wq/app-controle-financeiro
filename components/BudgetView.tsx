@@ -216,8 +216,10 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
   const handleBudgetChange = (categoryId: string, value: string) => {
     const numValue = parseFloat(value) || 0;
+    const existingBudget = budgets.find(b => b.categoryId === categoryId && b.month === selectedMonth + 1 && b.year === selectedYear);
+
     onSaveBudget({
-      id: `${categoryId}-${selectedMonth}-${selectedYear}`,
+      id: existingBudget ? existingBudget.id : `${categoryId}-${selectedMonth}-${selectedYear}`,
       categoryId,
       month: selectedMonth + 1, // API expects 1-indexed month
       year: selectedYear,
@@ -229,9 +231,12 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     const newBudgets: Budget[] = [];
     expenseCategories.forEach(cat => {
       const realized = getRealizedAmount(cat.name);
+
+      const existingBudget = budgets.find(b => b.categoryId === cat.id && b.month === selectedMonth + 1 && b.year === selectedYear);
+
       // Always add to list to sync, even if 0 (to overwrite existing budget if needed)
       newBudgets.push({
-        id: `${cat.id}-${selectedMonth}-${selectedYear}`,
+        id: existingBudget ? existingBudget.id : `${cat.id}-${selectedMonth}-${selectedYear}`,
         categoryId: cat.id,
         month: selectedMonth + 1, // API expects 1-indexed month
         year: selectedYear,
