@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Category, Transaction, Budget, TransactionType } from '../types';
-import { ChevronLeft, ChevronRight, AlertCircle, ArrowRightLeft, Wallet, PieChart, TrendingUp, Layers, ShoppingBag, Activity } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertCircle, ArrowRightLeft, Wallet, PieChart, TrendingUp, Layers, ShoppingBag, Activity, X, Calendar, Filter } from 'lucide-react';
 import BudgetReallocationModal from './BudgetReallocationModal';
 import BudgetYearlyEditModal from './BudgetYearlyEditModal';
 
@@ -17,6 +17,14 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isYearlyEditOpen, setIsYearlyEditOpen] = useState(false);
+
+  // Date Filters for Global View
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
+  // Details Modal State
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [detailsModalType, setDetailsModalType] = useState<'INCOME' | 'BUDGET' | null>(null);
 
   // Reallocation State
   const [reallocationSource, setReallocationSource] = useState<{ id: string; name: string; remaining: number; currentBudget: number } | null>(null);
@@ -45,15 +53,34 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     }
   };
 
-  // --- GLOBAL CALCULATIONS (All Time) ---
+  // --- GLOBAL CALCULATIONS (Filtered by Date Range if set) ---
 
-  // 1. Total Global Income (All transactions of type INCOME, regardless of date or status)
-  const globalTotalIncome = transactions
-    .filter(t => t.type === TransactionType.INCOME && !t.ignoreInBudget)
-    .reduce((acc, t) => acc + t.amount, 0);
+  const isDateInGlobalRange = (dateStr: string) => {
+    if (!filterStartDate && !filterEndDate) return true;
+    if (filterStartDate && dateStr < filterStartDate) return false;
+    if (filterEndDate && dateStr > filterEndDate) return false;
+    return true;
+  };
 
-  // 2. Total Global Budgeted (Sum of all budget entries across all months/years)
-  const globalTotalBudgeted = budgets.reduce((acc, b) => acc + b.amount, 0);
+  const isBudgetInGlobalRange = (month: number, year: number) => {
+    if (!filterStartDate && !filterEndDate) return true;
+    // Check if the 1st of the month is within the range
+    const budgetDateStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    if (filterStartDate && budgetDateStr < filterStartDate) return false;
+    if (filterEndDate && budgetDateStr > filterEndDate) return false;
+    return true;
+  };
+
+  // 1. Total Global Income (All transactions of type INCOME, filtered by date)
+  const globalIncomeTransactions = transactions
+    .filter(t => t.type === TransactionType.INCOME && !t.ignoreInBudget && isDateInGlobalRange(t.date));
+
+  const globalTotalIncome = globalIncomeTransactions.reduce((acc, t) => acc + t.amount, 0);
+
+  // 2. Total Global Budgeted (Sum of all budget entries, filtered by date)
+  const globalBudgetEntries = budgets.filter(b => isBudgetInGlobalRange(b.month, b.year));
+
+  const globalTotalBudgeted = globalBudgetEntries.reduce((acc, b) => acc + b.amount, 0);
 
   // 3. Global Available for Allocation
   const globalAvailableForAllocation = globalTotalIncome - globalTotalBudgeted;
@@ -170,15 +197,48 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
   return (
     <div className="space-y-6">
 
+      {/* Date Filters */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-4">
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">De</label>
+          <input
+            type="date"
+            value={filterStartDate}
+            onChange={e => setFilterStartDate(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Até</label>
+          <input
+            type="date"
+            value={filterEndDate}
+            onChange={e => setFilterEndDate(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+        {(filterStartDate || filterEndDate) && (
+          <button
+            onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+            className="text-xs text-rose-600 hover:text-rose-700 font-medium hover:underline mb-3"
+          >
+            Limpar Filtros
+          </button>
+        )}
+      </div>
+
       {/* 1. Global Header Row: Income, Global Budget, Available */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Total Income (Global) */}
-        <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div
+          onClick={() => { setDetailsModalType('INCOME'); setDetailsModalOpen(true); }}
+          className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all"
+        >
           <div className="bg-emerald-100 p-2.5 rounded-lg text-emerald-600">
             <TrendingUp size={24} />
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Total Receitas (Geral)</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Total Receitas (Período)</p>
             <p className="text-xl font-bold text-slate-800">
               {globalTotalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
@@ -186,12 +246,15 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
         </div>
 
         {/* Total Budgeted (Global) */}
-        <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div
+          onClick={() => { setDetailsModalType('BUDGET'); setDetailsModalOpen(true); }}
+          className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:border-blue-300 hover:shadow-md transition-all"
+        >
           <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600">
             <Layers size={24} />
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Total Orçado (Geral)</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Total Orçado (Período)</p>
             <p className="text-xl font-bold text-slate-800">
               {globalTotalBudgeted.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
@@ -393,6 +456,100 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
         selectedYear={selectedYear}
         onSave={onSaveBudgets}
       />
+
+      {/* Details Modal */}
+      {detailsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-slate-800 text-lg">
+                {detailsModalType === 'INCOME' ? 'Detalhamento de Receitas' : 'Detalhamento do Orçamento'}
+              </h3>
+              <button onClick={() => setDetailsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-0">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 shadow-sm">
+                  <tr>
+                    {detailsModalType === 'INCOME' ? (
+                      <>
+                        <th className="px-6 py-3">Data</th>
+                        <th className="px-6 py-3">Descrição</th>
+                        <th className="px-6 py-3">Categoria</th>
+                        <th className="px-6 py-3 text-right">Valor</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-6 py-3">Mês/Ano</th>
+                        <th className="px-6 py-3">Categoria</th>
+                        <th className="px-6 py-3 text-right">Valor Orçado</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {detailsModalType === 'INCOME' ? (
+                    globalIncomeTransactions.length > 0 ? (
+                      globalIncomeTransactions
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map(t => (
+                          <tr key={t.id} className="hover:bg-slate-50">
+                            <td className="px-6 py-3 text-slate-600">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                            <td className="px-6 py-3 font-medium text-slate-800">{t.description}</td>
+                            <td className="px-6 py-3 text-slate-500">
+                              {t.category}
+                              {t.split && t.split.length > 0 && <span className="text-xs text-blue-500 ml-1">(Split)</span>}
+                            </td>
+                            <td className="px-6 py-3 text-right font-bold text-emerald-600">
+                              {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </td>
+                          </tr>
+                        ))
+                    ) : (
+                      <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Nenhuma receita no período.</td></tr>
+                    )
+                  ) : (
+                    globalBudgetEntries.length > 0 ? (
+                      globalBudgetEntries
+                        .sort((a, b) => {
+                          if (a.year !== b.year) return b.year - a.year;
+                          return b.month - a.month;
+                        })
+                        .map(b => {
+                          const catName = categories.find(c => c.id === b.categoryId)?.name || 'Desconhecida';
+                          return (
+                            <tr key={b.id} className="hover:bg-slate-50">
+                              <td className="px-6 py-3 text-slate-600">{months[b.month]}/{b.year}</td>
+                              <td className="px-6 py-3 font-medium text-slate-800">{catName}</td>
+                              <td className="px-6 py-3 text-right font-bold text-blue-600">
+                                {b.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </td>
+                            </tr>
+                          );
+                        })
+                    ) : (
+                      <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">Nenhum orçamento no período.</td></tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 text-right">
+              <span className="text-sm text-slate-500 mr-2">Total:</span>
+              <span className="text-lg font-bold text-slate-800">
+                {detailsModalType === 'INCOME'
+                  ? globalTotalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                  : globalTotalBudgeted.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                }
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
