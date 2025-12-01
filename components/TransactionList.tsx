@@ -46,6 +46,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [filterAccount, setFilterAccount] = useState('');
   const [filterType, setFilterType] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>(''); // 'APPLIED' | 'PENDING' | ''
+  const [filterIgnoreInBudget, setFilterIgnoreInBudget] = useState<string>(''); // 'YES' | 'NO' | ''
   const [showFilters, setShowFilters] = useState(false);
 
   // --- Filtering Logic ---
@@ -65,6 +66,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
     if (filterStatus) {
       if (filterStatus === 'APPLIED' && !t.isApplied) return false;
       if (filterStatus === 'PENDING' && t.isApplied) return false;
+    }
+    // Ignore In Budget
+    if (filterIgnoreInBudget) {
+      if (filterIgnoreInBudget === 'YES' && !t.ignoreInBudget) return false;
+      if (filterIgnoreInBudget === 'NO' && t.ignoreInBudget) return false;
     }
 
     return true;
@@ -101,6 +107,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setFilterAccount('');
     setFilterType('');
     setFilterStatus('');
+    setFilterIgnoreInBudget('');
   };
 
   // Get unique categories for filter dropdown
@@ -248,6 +255,20 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <option value="">Todos</option>
                 <option value="APPLIED">Concretizados (Pagos)</option>
                 <option value="PENDING">Pendentes</option>
+              </select>
+            </div>
+
+            {/* Ignore In Budget Filter */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Ignorar no Orçamento</label>
+              <select
+                value={filterIgnoreInBudget}
+                onChange={e => setFilterIgnoreInBudget(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Todos</option>
+                <option value="YES">Sim (Ignorados)</option>
+                <option value="NO">Não (Considerados)</option>
               </select>
             </div>
 
