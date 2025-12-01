@@ -49,7 +49,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
   // 1. Total Global Income (All transactions of type INCOME, regardless of date or status)
   const globalTotalIncome = transactions
-    .filter(t => t.type === TransactionType.INCOME)
+    .filter(t => t.type === TransactionType.INCOME && !t.ignoreInBudget)
     .reduce((acc, t) => acc + t.amount, 0);
 
   // 2. Total Global Budgeted (Sum of all budget entries across all months/years)

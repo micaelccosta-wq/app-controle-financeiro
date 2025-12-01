@@ -31,6 +31,7 @@ interface ParsedTransaction extends ParsedItemBase {
   amount: number;
   type: TransactionType;
   category: string;
+  ignoreInBudget: boolean;
   split?: { categoryName: string; amount: number }[];
 }
 
@@ -111,12 +112,11 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
     let fileName = '';
 
     if (importType === 'transactions') {
-      headers = ['Data (AAAA-MM-DD)', 'Descricao', 'Valor', 'Tipo (RECEITA/DESPESA)', 'Categoria (Opcional ou "Cat1:Val1;Cat2:Val2")'];
+      headers = ['Data (AAAA-MM-DD)', 'Descricao', 'Valor', 'Tipo (RECEITA/DESPESA)', 'Categoria (Opcional)', 'Ignorar no Orçamento (SIM/NAO)'];
       rows = [
-        ['2025-10-01', 'Supermercado Compra', '150.50', 'DESPESA', 'Alimentação'],
-        ['2025-10-05', 'Salário Mensal', '5000.00', 'RECEITA', 'Salário'],
-        ['2025-10-10', 'Uber Viagem', '25.90', 'DESPESA', 'Transporte'],
-        ['2025-10-15', 'Compra Mista', '200.00', 'DESPESA', 'Alimentação: 100; Lazer: 100']
+        ['2025-10-01', 'Supermercado Compra', '150.50', 'DESPESA', 'Alimentação', 'NAO'],
+        ['2025-10-05', 'Salário Mensal', '5000.00', 'RECEITA', 'Salário', 'NAO'],
+        ['2025-10-10', 'Reembolso Empresa', '125.90', 'RECEITA', 'Reembolso', 'SIM']
       ];
       fileName = 'modelo_importacao_transacoes.csv';
     } else if (importType === 'categories') {
@@ -199,8 +199,15 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
           const rawType = cols[3]?.trim().toUpperCase();
 
           // Reconstruct category from all remaining columns (in case it contains the delimiter)
-          // Example: "Moradia: 130,72; Reembolsos: 2000" might be split into ["Moradia: 130,72", " Reembolsos: 2000"]
-          const rawCategory = cols.slice(4).join(separator).trim().replace(/"/g, '') || '';
+          // BUT now we have a new column at the end (IgnoreInBudget).
+          // We need to be careful. Let's assume the LAST column might be IgnoreInBudget if it matches SIM/NAO/YES/NO
+          // OR we stick to fixed index. The user asked to adjust layout.
+          // Let's assume fixed index: 
+          // 0: Date, 1: Desc, 2: Amount, 3: Type, 4: Category, 5: IgnoreInBudget
+
+          const rawCategory = cols[4]?.trim().replace(/"/g, '') || '';
+          const rawIgnore = cols[5]?.trim().toUpperCase();
+          const ignoreInBudget = (rawIgnore === 'SIM' || rawIgnore === 'YES' || rawIgnore === 'TRUE');
 
           let isValid = true;
           let error = '';
@@ -261,6 +268,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
             amount: Math.abs(amount),
             type: (rawType === 'RECEITA' || rawType === 'INCOME') ? TransactionType.INCOME : TransactionType.EXPENSE,
             category: finalCategory || 'Outros',
+            ignoreInBudget,
             split: splits.length > 0 ? splits : undefined
           } as ParsedTransaction);
 
@@ -381,6 +389,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
           type: finalType,
           category: item.category,
           isApplied: true,
+          ignoreInBudget: item.ignoreInBudget,
           accountId: targetAccountId,
           invoiceMonth: isTargetCreditCard ? targetInvoice : undefined,
           observations: 'Importado via CSV',
@@ -434,7 +443,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
   };
 
   const getHelpText = () => {
-    if (importType === 'transactions') return 'Data, Descrição, Valor, Tipo, Categoria (ou "Cat1:Val1;Cat2:Val2")';
+    if (importType === 'transactions') return 'Data, Descrição, Valor, Tipo, Categoria, Ignorar no Orçamento';
     if (importType === 'categories') return 'Nome, Tipo (Rec/Desp), Subtipo (Fix/Var), Impacta Orçamento, Ícone';
     if (importType === 'accounts') return 'Nome, Tipo (Banco/Cartão), Saldo Inicial, Fechamento, Vencimento';
     if (importType === 'budgets') return 'Categoria, Mês (1-12), Ano, Valor';

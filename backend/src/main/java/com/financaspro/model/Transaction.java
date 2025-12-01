@@ -30,6 +30,9 @@ public class Transaction {
     @com.fasterxml.jackson.annotation.JsonProperty("isApplied")
     private Boolean isApplied;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("ignoreInBudget")
+    private Boolean ignoreInBudget;
+
     @Column(length = 1000)
     private String observations;
 

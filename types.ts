@@ -45,9 +45,10 @@ export interface Transaction {
   category: string;
   type: TransactionType;
   isApplied: boolean;
+  ignoreInBudget?: boolean;
   observations?: string;
-  accountId?: string; 
-  
+  accountId?: string;
+
   // OFX Import ID (Financial Institution Transaction ID)
   fitid?: string;
 
@@ -56,11 +57,11 @@ export interface Transaction {
 
   // Credit Card Specifics
   invoiceMonth?: string; // Format "MM/YYYY" - The invoice this transaction belongs to
-  
+
   // Installments
   batchId?: string;
   installmentNumber?: number;
-  totalInstallments?: number; 
+  totalInstallments?: number;
 }
 
 export interface Budget {
