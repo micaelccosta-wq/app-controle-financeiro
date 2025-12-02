@@ -646,6 +646,16 @@ const App: React.FC = () => {
     }
   };
 
+  const handleToggleTransactionStatus = async (transaction: Transaction) => {
+    try {
+      const updated = await transactionService.update({ ...transaction, isApplied: !transaction.isApplied });
+      setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
+    } catch (error) {
+      console.error("Failed to toggle status", error);
+      alert("Erro ao alterar status.");
+    }
+  };
+
   const handleReopenInvoice = async (invoiceName: string) => {
     // Strategy 1: Exact match on Description + Category
     let paymentTransaction = transactions.find(t =>
@@ -802,6 +812,7 @@ const App: React.FC = () => {
             <FinancialCalendar
               transactions={transactions}
               accounts={accounts}
+              onToggleTransactionStatus={handleToggleTransactionStatus}
             />
 
             <TransactionForm

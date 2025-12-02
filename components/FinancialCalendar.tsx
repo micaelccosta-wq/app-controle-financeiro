@@ -6,9 +6,10 @@ import { Transaction, Account, TransactionType, AccountType } from '../types';
 interface FinancialCalendarProps {
   transactions: Transaction[];
   accounts: Account[];
+  onToggleTransactionStatus: (t: Transaction) => void;
 }
 
-const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, accounts }) => {
+const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, accounts, onToggleTransactionStatus }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedDayDetails, setSelectedDayDetails] = useState<{ date: string; dayData: any } | null>(null);
@@ -195,11 +196,17 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
             currentDate.getMonth() === today.getMonth() &&
             currentDate.getFullYear() === today.getFullYear();
 
+          const allApplied = dayData.transactions.length > 0 && dayData.transactions.every((t: Transaction) => t.isApplied);
+
           return (
             <div
               key={dayData.dateStr}
               onClick={() => setSelectedDayDetails({ date: dayData.dateStr, dayData })}
-              className={`min-h-[80px] border-r border-b border-slate-100 p-2 cursor-pointer transition-colors hover:bg-slate-50 flex flex-col justify-between relative group ${isToday ? 'bg-blue-50 ring-2 ring-inset ring-blue-400 z-10' : (isNegative ? 'bg-red-50/30' : '')
+              className={`min-h-[80px] border-r border-b border-slate-100 p-2 cursor-pointer transition-colors hover:bg-slate-50 flex flex-col justify-between relative group 
+                ${isToday ? 'bg-blue-50 ring-2 ring-inset ring-blue-400 z-10' :
+                  (allApplied ? 'bg-slate-100/50' :
+                    (isNegative ? 'bg-red-50/30' : '')
+                  )
                 }`}
             >
               <div className="flex justify-between items-start">
@@ -291,9 +298,18 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
                         <p className={`text-sm font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
-                        <p className="text-[10px] text-slate-400">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleTransactionStatus(t);
+                          }}
+                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${t.isApplied
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                            }`}
+                        >
                           {t.isApplied ? 'Aplicado' : 'Pendente'}
-                        </p>
+                        </button>
                       </div>
                     </div>
                   ))}

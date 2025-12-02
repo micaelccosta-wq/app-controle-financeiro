@@ -130,7 +130,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
   // 1. Total Budgeted for the specific month view
   const monthlyTotalBudgeted = budgets
-    .filter(b => b.month === selectedMonth + 1 && b.year === selectedYear) // Read as 1-indexed
+    .filter(b => b.month === selectedMonth && b.year === selectedYear)
     .reduce((acc, b) => acc + b.amount, 0);
 
   // 2. Total Realized for the specific month view (All Expenses)
@@ -190,7 +190,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
 
   const getPlannedAmount = (categoryId: string) => {
-    return budgets.find(b => b.categoryId === categoryId && b.month === selectedMonth + 1 && b.year === selectedYear)?.amount || 0; // Read as 1-indexed
+    return budgets.find(b => b.categoryId === categoryId && b.month === selectedMonth && b.year === selectedYear)?.amount || 0;
   };
 
   const getRealizedAmount = (categoryName: string) => {
@@ -216,12 +216,12 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
   const handleBudgetChange = (categoryId: string, value: string) => {
     const numValue = parseFloat(value) || 0;
-    const existingBudget = budgets.find(b => b.categoryId === categoryId && b.month === selectedMonth + 1 && b.year === selectedYear);
+    const existingBudget = budgets.find(b => b.categoryId === categoryId && b.month === selectedMonth && b.year === selectedYear);
 
     onSaveBudget({
       id: existingBudget ? existingBudget.id : `${categoryId}-${selectedMonth}-${selectedYear}`,
       categoryId,
-      month: selectedMonth + 1, // API expects 1-indexed month
+      month: selectedMonth, // API expects 0-indexed month
       year: selectedYear,
       amount: numValue
     });
@@ -232,13 +232,13 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     expenseCategories.forEach(cat => {
       const realized = getRealizedAmount(cat.name);
 
-      const existingBudget = budgets.find(b => b.categoryId === cat.id && b.month === selectedMonth + 1 && b.year === selectedYear);
+      const existingBudget = budgets.find(b => b.categoryId === cat.id && b.month === selectedMonth && b.year === selectedYear);
 
       // Always add to list to sync, even if 0 (to overwrite existing budget if needed)
       newBudgets.push({
         id: existingBudget ? existingBudget.id : `${cat.id}-${selectedMonth}-${selectedYear}`,
         categoryId: cat.id,
-        month: selectedMonth + 1, // API expects 1-indexed month
+        month: selectedMonth, // API expects 0-indexed month
         year: selectedYear,
         amount: realized
       });
@@ -262,6 +262,33 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       currentBudget
     });
     setIsReallocationOpen(true);
+  };
+
+  const handleOpenDetails = (category: Category) => {
+    const categoryTransactions = transactions.filter(t => {
+      // Filter by month/year
+      if (!isTransactionInMonth(t, selectedMonth, selectedYear)) return false;
+
+      // Filter by category (handling splits)
+      if (t.split && t.split.length > 0) {
+        return t.split.some(s => {
+          let sName = s.categoryName;
+          if (sName.includes(':')) sName = sName.split(':')[0].trim();
+          return sName === category.name;
+        });
+      } else {
+        let cName = t.category;
+        if (cName.includes(':')) cName = cName.split(':')[0].trim();
+        return cName === category.name;
+      }
+    });
+
+    setDetailsModalData({
+      title: `Detalhes: ${category.name}`,
+      total: getRealizedAmount(category.name),
+      items: categoryTransactions
+    });
+    setDetailsModalOpen(true);
   };
 
   const handleConfirmReallocation = (adjustments: { categoryId: string; delta: number }[]) => {
@@ -364,7 +391,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                   let currentY = startY;
 
                   while (currentY < endY || (currentY === endY && currentM <= endM)) {
-                    const planned = budgets.find(b => b.categoryId === xRayCategoryId && b.month === currentM + 1 && b.year === currentY)?.amount || 0; // Read as 1-indexed
+                    const planned = budgets.find(b => b.categoryId === xRayCategoryId && b.month === currentM && b.year === currentY)?.amount || 0;
 
                     const catName = categories.find(c => c.id === xRayCategoryId)?.name || '';
 
@@ -595,6 +622,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                   realized={getRealizedAmount(cat.name)}
                   onBudgetChange={handleBudgetChange}
                   onReallocate={handleOpenReallocation}
+                  onOpenDetails={handleOpenDetails}
                 />
               ))
             )}
@@ -621,6 +649,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                   realized={getRealizedAmount(cat.name)}
                   onBudgetChange={handleBudgetChange}
                   onReallocate={handleOpenReallocation}
+                  onOpenDetails={handleOpenDetails}
                 />
               ))
             )}
@@ -818,7 +847,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
               <div className="text-sm">
                 <span className="text-slate-500 mr-2">Orçado:</span>
                 <span className="font-bold text-blue-600">
-                  {(budgets.find(b => b.categoryId === xRayDetailsData.categoryId && b.month === xRayDetailsData.month + 1 && b.year === xRayDetailsData.year)?.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {(budgets.find(b => b.categoryId === xRayDetailsData.categoryId && b.month === xRayDetailsData.month && b.year === xRayDetailsData.year)?.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </div>
               <div className="text-sm">
@@ -873,9 +902,10 @@ interface BudgetCardProps {
   realized: number;
   onBudgetChange: (categoryId: string, value: string) => void;
   onReallocate: (category: Category, remaining: number, currentBudget: number) => void;
+  onOpenDetails: (category: Category) => void;
 }
 
-const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudgetChange, onReallocate }) => {
+const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudgetChange, onReallocate, onOpenDetails }) => {
   const percentage = planned > 0 ? Math.min((realized / planned) * 100, 100) : (realized > 0 ? 100 : 0);
 
   let barColor = 'bg-blue-500';
@@ -892,6 +922,15 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudge
           <span className="text-xs text-slate-500">{cat.subtype}</span>
         </div>
         <div className="flex items-center gap-4">
+          {/* Details Button */}
+          <button
+            onClick={() => onOpenDetails(cat)}
+            className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-slate-50"
+            title="Ver detalhes"
+          >
+            <Search size={16} />
+          </button>
+
           {/* Reallocation Button - Only if there is surplus budget */}
           {remaining > 0 && planned > 0 && (
             <button
