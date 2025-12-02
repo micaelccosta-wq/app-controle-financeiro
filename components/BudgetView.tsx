@@ -55,6 +55,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
   // Details Modal State
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [detailsModalType, setDetailsModalType] = useState<'INCOME' | 'BUDGET' | null>(null);
+  const [detailsModalData, setDetailsModalData] = useState<{ title: string; total: number; items: Transaction[] } | null>(null);
 
   // Reallocation State
   const [reallocationSource, setReallocationSource] = useState<{ id: string; name: string; remaining: number; currentBudget: number } | null>(null);
@@ -922,15 +923,6 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudge
           <span className="text-xs text-slate-500">{cat.subtype}</span>
         </div>
         <div className="flex items-center gap-4">
-          {/* Details Button */}
-          <button
-            onClick={() => onOpenDetails(cat)}
-            className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-slate-50"
-            title="Ver detalhes"
-          >
-            <Search size={16} />
-          </button>
-
           {/* Reallocation Button - Only if there is surplus budget */}
           {remaining > 0 && planned > 0 && (
             <button
@@ -964,8 +956,15 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudge
       </div>
 
       <div className="flex justify-between text-sm">
-        <span className={`font-medium ${realized > planned && planned > 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+        <span className={`font-medium ${realized > planned && planned > 0 ? 'text-rose-600' : 'text-slate-600'} flex items-center gap-2`}>
           Realizado: {realized.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          <button
+            onClick={() => onOpenDetails(cat)}
+            className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-slate-50"
+            title="Ver detalhes"
+          >
+            <Search size={14} />
+          </button>
         </span>
         <span className="text-slate-500">
           Restante: <span className="font-medium text-slate-700">{remaining.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
