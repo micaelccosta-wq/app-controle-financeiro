@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Category, Transaction, Budget, TransactionType } from '../types';
-import { ChevronLeft, ChevronRight, AlertCircle, ArrowRightLeft, Wallet, PieChart, TrendingUp, Layers, ShoppingBag, Activity, X, Calendar, Filter, RefreshCw, BarChart2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertCircle, ArrowRightLeft, Wallet, PieChart, TrendingUp, Layers, ShoppingBag, Activity, X, Calendar, Filter, RefreshCw, BarChart2, Search } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import BudgetReallocationModal from './BudgetReallocationModal';
 import BudgetYearlyEditModal from './BudgetYearlyEditModal';

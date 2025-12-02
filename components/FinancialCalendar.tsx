@@ -298,18 +298,19 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
                         <p className={`text-sm font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleTransactionStatus(t);
-                          }}
-                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${t.isApplied
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
-                              : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                            }`}
-                        >
-                          {t.isApplied ? 'Aplicado' : 'Pendente'}
-                        </button>
+                        <div className="flex items-center justify-end gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                          <label className="flex items-center gap-1 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={t.isApplied || false}
+                              onChange={() => onToggleTransactionStatus(t)}
+                              className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                            />
+                            <span className="text-[10px] text-slate-500">
+                              {t.isApplied ? 'Aplicado' : 'Pendente'}
+                            </span>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   ))}
