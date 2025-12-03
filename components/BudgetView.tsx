@@ -157,12 +157,16 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     })
     .reduce((acc, t) => {
       if (t.split && t.split.length > 0) {
-        // Sum all splits that are expenses (which they should be if type is EXPENSE)
-        // We include ALL expenses now, regardless of whether they are in the displayed categories
-        const splitSum = t.split.reduce((sAcc, s) => sAcc + s.amount, 0);
+        const splitSum = t.split.reduce((sAcc, s) => {
+          let catName = s.categoryName;
+          if (catName.includes(':')) catName = catName.split(':')[0].trim();
+          return doesCategoryImpactBudget(catName) ? sAcc + s.amount : sAcc;
+        }, 0);
         return acc + splitSum;
       } else {
-        return acc + t.amount;
+        let catName = t.category;
+        if (catName.includes(':')) catName = catName.split(':')[0].trim();
+        return doesCategoryImpactBudget(catName) ? acc + t.amount : acc;
       }
     }, 0);
 
@@ -277,7 +281,19 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
   const handleOpenRealizedMonthDetails = () => {
     const monthTransactions = transactions.filter(t => {
-      return t.type === TransactionType.EXPENSE && isTransactionInMonth(t, selectedMonth, selectedYear);
+      if (t.type !== TransactionType.EXPENSE || !isTransactionInMonth(t, selectedMonth, selectedYear)) return false;
+
+      if (t.split && t.split.length > 0) {
+        return t.split.some(s => {
+          let catName = s.categoryName;
+          if (catName.includes(':')) catName = catName.split(':')[0].trim();
+          return doesCategoryImpactBudget(catName);
+        });
+      } else {
+        let catName = t.category;
+        if (catName.includes(':')) catName = catName.split(':')[0].trim();
+        return doesCategoryImpactBudget(catName);
+      }
     });
 
     setDetailsModalData({
