@@ -517,6 +517,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
             <ChevronLeft />
           </button>
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 w-48 text-center">
+            {months[selectedMonth]} / {selectedYear}
           </h2>
           <button onClick={() => handleMonthChange('next')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300 transition-colors">
             <ChevronRight />
@@ -703,9 +704,9 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                       </>
                     ) : detailsModalType === 'EXPENSE_REALIZED' ? (
                       <>
-                        <th className="px-6 py-3">Data</th>
+                        <th className="px-6 py-3">Data / Fatura</th>
                         <th className="px-6 py-3">Descrição</th>
-                        <th className="px-6 py-3">Conta</th>
+                        <th className="px-6 py-3">Conta / Tipo</th>
                         <th className="px-6 py-3 text-right">Valor</th>
                       </>
                     ) : (
@@ -760,12 +761,27 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
                           return (
                             <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                              <td className="px-6 py-3 text-slate-600 dark:text-slate-300">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                              <td className="px-6 py-3 text-slate-600 dark:text-slate-300">
+                                {t.invoiceMonth ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                                    Fatura {t.invoiceMonth}
+                                  </span>
+                                ) : (
+                                  new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                                )}
+                              </td>
                               <td className="px-6 py-3 font-medium text-slate-800 dark:text-slate-100">
                                 {t.description}
                                 {t.split && t.split.length > 0 && <span className="text-xs text-blue-500 ml-1">(Split)</span>}
                               </td>
-                              <td className="px-6 py-3 text-slate-500">{accountName}</td>
+                              <td className="px-6 py-3 text-slate-500">
+                                <div className="flex flex-col">
+                                  <span>{accountName}</span>
+                                  <span className="text-[10px] text-slate-400">
+                                    {t.invoiceMonth ? 'Cartão de Crédito' : 'Conta Corrente'}
+                                  </span>
+                                </div>
+                              </td>
                               <td className="px-6 py-3 text-right font-bold text-rose-600">
                                 {amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                               </td>
@@ -807,7 +823,9 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
               <span className="text-lg font-bold text-slate-800">
                 {detailsModalType === 'INCOME'
                   ? globalTotalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                  : globalTotalBudgeted.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                  : detailsModalType === 'EXPENSE_REALIZED'
+                    ? detailsModalData?.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    : globalTotalBudgeted.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                 }
               </span>
             </div>
