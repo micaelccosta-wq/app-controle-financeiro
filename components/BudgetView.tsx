@@ -157,24 +157,12 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     })
     .reduce((acc, t) => {
       if (t.split && t.split.length > 0) {
-        // Sum only splits that match a displayed category
-        const splitSum = t.split.reduce((sAcc, s) => {
-          let catName = s.categoryName;
-          if (catName.includes(':')) catName = catName.split(':')[0].trim();
-
-          // Check if this category is in our displayed list
-          const isDisplayed = expenseCategories.some(c => c.name === catName);
-          return isDisplayed ? sAcc + s.amount : sAcc;
-        }, 0);
+        // Sum all splits that are expenses (which they should be if type is EXPENSE)
+        // We include ALL expenses now, regardless of whether they are in the displayed categories
+        const splitSum = t.split.reduce((sAcc, s) => sAcc + s.amount, 0);
         return acc + splitSum;
       } else {
-        // Single category
-        let catName = t.category;
-        if (catName.includes(':')) catName = catName.split(':')[0].trim();
-
-        // Check if this category is in our displayed list
-        const isDisplayed = expenseCategories.some(c => c.name === catName);
-        return isDisplayed ? acc + t.amount : acc;
+        return acc + t.amount;
       }
     }, 0);
 
@@ -229,31 +217,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     });
   };
 
-  const handleSyncRealizedToPlanned = () => {
-    const newBudgets: Budget[] = [];
-    expenseCategories.forEach(cat => {
-      const realized = getRealizedAmount(cat.name);
 
-      const existingBudget = budgets.find(b => b.categoryId === cat.id && b.month === selectedMonth && b.year === selectedYear);
-
-      // Always add to list to sync, even if 0 (to overwrite existing budget if needed)
-      newBudgets.push({
-        id: existingBudget ? existingBudget.id : `${cat.id}-${selectedMonth}-${selectedYear}`,
-        categoryId: cat.id,
-        month: selectedMonth, // API expects 0-indexed month
-        year: selectedYear,
-        amount: realized
-      });
-    });
-
-    if (newBudgets.length > 0) {
-      if (window.confirm(`Deseja atualizar o orçamento de ${newBudgets.length} categorias para igualar ao valor realizado?`)) {
-        onSaveBudgets(newBudgets);
-      }
-    } else {
-      alert('Não há categorias para sincronizar.');
-    }
-  };
 
   // Reallocation Logic
   const handleOpenReallocation = (category: Category, remaining: number, currentBudget: number) => {
@@ -532,14 +496,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
           Editar Ano Inteiro
         </button>
 
-        <button
-          onClick={handleSyncRealizedToPlanned}
-          className="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors border border-emerald-200 dark:border-emerald-800 ml-2"
-          title="Copiar valores realizados para o orçamento"
-        >
-          <RefreshCw size={16} />
-          Copiar Realizado
-        </button>
+
       </div>
 
       {/* 3. Monthly Specific Stats (Budgeted vs Realized vs Balance) */}
