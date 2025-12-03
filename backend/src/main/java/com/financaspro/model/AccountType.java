@@ -2,5 +2,6 @@ package com.financaspro.model;
 
 public enum AccountType {
     BANK,
-    CREDIT_CARD
+    CREDIT_CARD,
+    INVESTMENT
 }

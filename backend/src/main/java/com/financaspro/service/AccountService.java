@@ -32,6 +32,19 @@ public class AccountService {
 
     public Account save(Account account) {
         account.setUserId(userContext.getCurrentUserId());
+
+        if (Boolean.TRUE.equals(account.getIsDefault())) {
+            Optional<Account> currentDefault = accountRepository.findByUserIdAndTypeAndIsDefaultTrue(
+                    userContext.getCurrentUserId(),
+                    account.getType());
+
+            if (currentDefault.isPresent() && !currentDefault.get().getId().equals(account.getId())) {
+                Account oldDefault = currentDefault.get();
+                oldDefault.setIsDefault(false);
+                accountRepository.save(oldDefault);
+            }
+        }
+
         return accountRepository.save(account);
     }
 

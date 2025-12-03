@@ -11,7 +11,8 @@ export enum CategorySubtype {
 
 export enum AccountType {
   BANK = 'BANK',
-  CREDIT_CARD = 'CREDIT_CARD'
+  CREDIT_CARD = 'CREDIT_CARD',
+  INVESTMENT = 'INVESTMENT'
 }
 
 export interface Category {
@@ -27,9 +28,10 @@ export interface Account {
   id: string;
   name: string;
   type: AccountType;
-  initialBalance: number; // Only for BANK
+  initialBalance: number; // Only for BANK and INVESTMENT
   closingDay?: number; // Only for CREDIT_CARD
   dueDay?: number; // Only for CREDIT_CARD
+  isDefault?: boolean;
 }
 
 export interface TransactionSplit {

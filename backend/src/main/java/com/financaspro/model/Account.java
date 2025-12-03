@@ -25,4 +25,7 @@ public class Account {
 
     private Integer closingDay; // Only for CREDIT_CARD
     private Integer dueDay; // Only for CREDIT_CARD
+
+    @Column(name = "is_default")
+    private Boolean isDefault;
 }
