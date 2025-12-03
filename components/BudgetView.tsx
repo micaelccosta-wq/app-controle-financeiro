@@ -749,15 +749,23 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                           let amount = t.amount;
                           // Handle split amount if needed
                           if (t.split && t.split.length > 0) {
-                            // Find the split part that matches the category
-                            // Note: detailsModalData.title contains "Detalhes: CategoryName"
-                            const catName = detailsModalData.title.replace('Detalhes: ', '');
-                            const split = t.split.find(s => {
-                              let sName = s.categoryName;
-                              if (sName.includes(':')) sName = sName.split(':')[0].trim();
-                              return sName === catName;
-                            });
-                            if (split) amount = split.amount;
+                            if (detailsModalData.title.startsWith('Realizado em')) {
+                              // For global realized view, sum all budget-impacting splits
+                              amount = t.split.reduce((acc, s) => {
+                                let catName = s.categoryName;
+                                if (catName.includes(':')) catName = catName.split(':')[0].trim();
+                                return doesCategoryImpactBudget(catName) ? acc + s.amount : acc;
+                              }, 0);
+                            } else {
+                              // For specific category view, find the matching split
+                              const catName = detailsModalData.title.replace('Detalhes: ', '');
+                              const split = t.split.find(s => {
+                                let sName = s.categoryName;
+                                if (sName.includes(':')) sName = sName.split(':')[0].trim();
+                                return sName === catName;
+                              });
+                              if (split) amount = split.amount;
+                            }
                           }
 
                           return (
