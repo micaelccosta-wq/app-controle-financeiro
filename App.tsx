@@ -17,6 +17,7 @@ import OFXImportModal from './components/OFXImportModal';
 import CSVImportModal from './components/CSVImportModal';
 import BackupModal from './components/BackupModal';
 import SettingsModal from './components/SettingsModal';
+import PendingTransactionsModal from './components/PendingTransactionsModal';
 import { performBackupToDrive } from './services/driveService';
 import { transactionService, categoryService, accountService, budgetService, goalService, wealthConfigService, dataService } from './services/api';
 import { Transaction, Category, TransactionType, CategorySubtype, Budget, Account, AccountType, BackupData, FinancialGoal, WealthConfig, GoogleDriveConfig } from './types';
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [notificationDays, setNotificationDays] = useState(3);
   const [darkMode, setDarkMode] = useState(false);
+  const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
 
   const [driveStatus, setDriveStatus] = useState<string>(''); // For visual feedback
 
@@ -103,7 +105,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Notification Check
+  // Notification Check (Modal)
   useEffect(() => {
     if (!isLoading && transactions.length > 0) {
       const checkNotifications = () => {
@@ -126,34 +128,7 @@ const App: React.FC = () => {
         });
 
         if (pending.length > 0) {
-          const overdueCount = pending.filter(t => {
-            const tDate = new Date(t.date);
-            const tDateLocal = new Date(tDate.getUTCFullYear(), tDate.getUTCMonth(), tDate.getUTCDate());
-            return tDateLocal < today;
-          }).length;
-
-          const upcomingCount = pending.length - overdueCount;
-
-          let bodyMsg = '';
-          if (overdueCount > 0 && upcomingCount > 0) {
-            bodyMsg = `Você tem ${overdueCount} contas vencidas e ${upcomingCount} próximas do vencimento.`;
-          } else if (overdueCount > 0) {
-            bodyMsg = `Você tem ${overdueCount} contas vencidas.`;
-          } else {
-            bodyMsg = `Você tem ${upcomingCount} contas próximas do vencimento.`;
-          }
-
-          if ("Notification" in window) {
-            if (Notification.permission === "granted") {
-              new Notification("Contas a Pagar", { body: bodyMsg });
-            } else if (Notification.permission !== "denied") {
-              Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                  new Notification("Contas a Pagar", { body: bodyMsg });
-                }
-              });
-            }
-          }
+          setIsPendingModalOpen(true);
         }
       };
 
@@ -936,6 +911,25 @@ const App: React.FC = () => {
               transactions={transactions}
               accounts={accounts}
               onToggleTransactionStatus={handleToggleTransactionStatus}
+              onDeleteTransaction={handleDeleteTransaction}
+              onEditTransaction={handleEditTransactionStart}
+            />
+
+            <PendingTransactionsModal
+              isOpen={isPendingModalOpen}
+              onClose={() => setIsPendingModalOpen(false)}
+              transactions={transactions.filter(t => {
+                if (t.isApplied) return false;
+                if (t.type !== TransactionType.EXPENSE) return false;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const futureDate = new Date(today);
+                futureDate.setDate(today.getDate() + notificationDays);
+                const tDate = new Date(t.date);
+                const tDateLocal = new Date(tDate.getUTCFullYear(), tDate.getUTCMonth(), tDate.getUTCDate());
+                return tDateLocal <= futureDate;
+              })}
+              onGoToTransactions={() => setActiveTab('transactions')}
             />
 
             <TransactionForm

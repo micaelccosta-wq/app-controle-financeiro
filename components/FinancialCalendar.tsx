@@ -1,15 +1,17 @@
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, ArrowUpCircle, ArrowDownCircle, Wallet, Calendar as CalendarIcon, CheckCircle2, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, ArrowUpCircle, ArrowDownCircle, Wallet, Calendar as CalendarIcon, CheckCircle2, Clock, Trash2 } from 'lucide-react';
 import { Transaction, Account, TransactionType, AccountType } from '../types';
 
 interface FinancialCalendarProps {
   transactions: Transaction[];
   accounts: Account[];
   onToggleTransactionStatus: (t: Transaction) => void;
+  onDeleteTransaction: (id: string) => void;
+  onEditTransaction: (t: Transaction) => void;
 }
 
-const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, accounts, onToggleTransactionStatus }) => {
+const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, accounts, onToggleTransactionStatus, onDeleteTransaction, onEditTransaction }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedDayDetails, setSelectedDayDetails] = useState<{ date: string } | null>(null);
@@ -288,32 +290,54 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
                 ) : (
                   <div className="space-y-2">
                     {dayData.transactions.map((t: Transaction) => (
-                      <div key={t.id} className="flex items-center justify-between p-2 border border-slate-100 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between p-2 border border-slate-100 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer group"
+                        onClick={() => {
+                          onEditTransaction(t);
+                          setSelectedDayDetails(null); // Close modal to edit
+                        }}
+                      >
                         <div className="flex items-center gap-3">
                           <div className={`p-1.5 rounded-full ${t.type === TransactionType.INCOME ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                             {t.type === TransactionType.INCOME ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 line-clamp-1">{t.description}</p>
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 line-clamp-1 group-hover:text-blue-600 transition-colors">{t.description}</p>
                             <p className="text-xs text-slate-500 dark:text-slate-400">{t.category}</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className={`text-sm font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </p>
-                          <div className="flex items-center justify-end gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => onToggleTransactionStatus(t)}
-                              className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${t.isApplied
-                                ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
-                                : 'text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
-                                }`}
-                            >
-                              {t.isApplied ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                              {t.isApplied ? 'Aplicado' : 'Pendente'}
-                            </button>
+                        <div className="text-right flex items-center gap-3">
+                          <div>
+                            <p className={`text-sm font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                              {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                            <div className="flex items-center justify-end gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => onToggleTransactionStatus(t)}
+                                className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${t.isApplied
+                                  ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+                                  : 'text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
+                                  }`}
+                              >
+                                {t.isApplied ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                                {t.isApplied ? 'Aplicado' : 'Pendente'}
+                              </button>
+                            </div>
                           </div>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm('Tem certeza que deseja excluir esta transação?')) {
+                                onDeleteTransaction(t.id);
+                              }
+                            }}
+                            className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                            title="Excluir"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
                     ))}

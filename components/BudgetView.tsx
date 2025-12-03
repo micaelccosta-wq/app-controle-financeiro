@@ -68,7 +68,9 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
   const [xRayDetailsData, setXRayDetailsData] = useState<{ month: number; year: number; categoryId: string; categoryName: string } | null>(null);
 
   // Filter Categories for the list (Moved up to be available for calculations)
-  const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE && c.impactsBudget);
+  const expenseCategories = categories
+    .filter(c => c.type === TransactionType.EXPENSE && c.impactsBudget)
+    .sort((a, b) => a.name.localeCompare(b.name));
   const fixedCategories = expenseCategories.filter(c => c.subtype === CategorySubtype.FIXED);
   const variableCategories = expenseCategories.filter(c => c.subtype === CategorySubtype.VARIABLE);
 
@@ -986,7 +988,7 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudge
   if (percentage > 85) barColor = 'bg-amber-500';
   if (percentage >= 100 || (planned === 0 && realized > 0)) barColor = 'bg-rose-500';
 
-  const remaining = Math.max(0, planned - realized);
+  const remaining = Math.max(0, parseFloat((planned - realized).toFixed(2)));
 
   return (
     <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 group">
@@ -997,17 +999,6 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudge
         </div>
         <div className="flex items-center gap-4">
           {/* Reallocation Button - Only if there is surplus budget */}
-          {remaining > 0 && planned > 0 && (
-            <button
-              onClick={() => onReallocate(cat, remaining, planned)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-600 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2 py-1 rounded border border-slate-200"
-              title="Remanejar saldo restante para outras categorias"
-            >
-              <ArrowRightLeft size={14} />
-              Remanejar
-            </button>
-          )}
-
           <div className="flex flex-col items-end">
             <label className="text-xs text-slate-500 mb-1">Meta Mensal</label>
             <div className="relative">
@@ -1038,6 +1029,18 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ cat, planned, realized, onBudge
           >
             <Search size={14} />
           </button>
+
+          {/* Reallocation Button - Only if there is surplus budget */}
+          {remaining > 0 && planned > 0 && (
+            <button
+              onClick={() => onReallocate(cat, remaining, planned)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-600 flex items-center gap-1 text-xs font-medium bg-slate-50 px-2 py-1 rounded border border-slate-200 ml-2"
+              title="Remanejar saldo restante para outras categorias"
+            >
+              <ArrowRightLeft size={14} />
+              Remanejar
+            </button>
+          )}
         </span>
         <span className="text-slate-500">
           Restante: <span className="font-medium text-slate-700">{remaining.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
