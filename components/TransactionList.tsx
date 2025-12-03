@@ -133,12 +133,12 @@ const TransactionList: React.FC<TransactionListProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 px-1 gap-4">
-        <h3 className="text-lg font-semibold text-slate-800">Últimos Lançamentos</h3>
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Últimos Lançamentos</h3>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors shadow-sm ${showFilters ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors shadow-sm ${showFilters ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'}`}
           >
             <Filter size={14} />
             {showFilters ? 'Ocultar Filtros' : 'Filtros'}
@@ -168,9 +168,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
       {/* Filter Bar */}
       {showFilters && (
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-2">
+        <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm animate-in fade-in slide-in-from-top-2">
           <div className="flex justify-between items-center mb-4">
-            <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
               <Filter size={16} className="text-blue-500" />
               Filtros Avançados
             </h4>
@@ -191,7 +191,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   placeholder="Buscar por nome..."
                   value={filterDesc}
                   onChange={e => setFilterDesc(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white"
                 />
               </div>
             </div>
@@ -203,7 +203,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 type="date"
                 value={filterDateStart}
                 onChange={e => setFilterDateStart(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white"
               />
             </div>
 
@@ -223,7 +223,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
               <select
                 value={filterCategory}
                 onChange={e => setFilterCategory(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white"
               >
                 <option value="">Todas</option>
                 {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -316,15 +316,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
       )}
 
       {sortedTransactions.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-slate-200 border-dashed">
-          <p className="text-slate-400 mb-2">
+        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 border-dashed">
+          <p className="text-slate-400 dark:text-slate-500 mb-2">
             {transactions.length > 0 ? 'Nenhuma movimentação encontrada com os filtros atuais.' : 'Nenhuma movimentação registrada.'}
           </p>
         </div>
       ) : (
         <>
           {/* Select All Bar */}
-          <div className="bg-slate-100 rounded-lg px-4 py-2 flex items-center gap-3 border border-slate-200">
+          <div className="bg-slate-100 dark:bg-slate-800/50 rounded-lg px-4 py-2 flex items-center gap-3 border border-slate-200 dark:border-slate-700">
             <button onClick={handleSelectAllFiltered} className="text-slate-500 hover:text-slate-800">
               {allFilteredSelected ? <CheckSquare size={20} /> : <Square size={20} />}
             </button>
@@ -340,7 +340,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
               return (
                 <div
                   key={t.id}
-                  className={`bg-white rounded-lg p-4 shadow-sm border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group ${isSelected ? 'border-blue-400 bg-blue-50/30' : 'border-slate-200 hover:border-blue-300'
+                  className={`bg-white dark:bg-slate-800 rounded-lg p-4 shadow-sm border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group ${isSelected ? 'border-blue-400 bg-blue-50/30 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700'
                     }`}
                 >
                   {/* Left: Checkbox, Icon & Description */}
@@ -357,7 +357,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     </div>
 
                     <div>
-                      <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+                      <h4 className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                         {t.description}
                         {t.totalInstallments && t.totalInstallments > 1 && (
                           <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full border border-slate-200 flex items-center gap-1" title="Parcelado">
@@ -366,7 +366,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         )}
                       </h4>
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-500">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1" title={hasSplit ? t.split?.map(s => `${s.categoryName}: R$ ${s.amount}`).join('\n') : ''}>
                           <Tag size={14} />
                           {hasSplit ? (

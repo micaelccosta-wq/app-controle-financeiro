@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, ArrowUpCircle, ArrowDownCircle, Wallet, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, ArrowUpCircle, ArrowDownCircle, Wallet, Calendar as CalendarIcon, CheckCircle2, Clock } from 'lucide-react';
 import { Transaction, Account, TransactionType, AccountType } from '../types';
 
 interface FinancialCalendarProps {
@@ -126,14 +126,14 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
   const creditAccounts = accounts.filter(a => a.type === AccountType.CREDIT_CARD);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-8 overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-8 overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50 dark:bg-slate-800/50">
         <div className="flex items-center gap-2">
           <div className="bg-blue-100 text-blue-700 p-2 rounded-lg">
             <CalendarIcon size={20} />
           </div>
-          <h2 className="font-semibold text-slate-800">Fluxo de Caixa Mensal</h2>
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Fluxo de Caixa Mensal</h2>
         </div>
 
         <div className="flex items-center gap-4">
@@ -142,7 +142,7 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
             <select
               value={selectedAccountId}
               onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="pl-9 pr-4 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white appearance-none min-w-[150px]"
+              className="pl-9 pr-4 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 dark:text-white appearance-none min-w-[150px]"
             >
               <option value="">Fluxo Global (Bancos)</option>
               <optgroup label="Contas Bancárias">
@@ -160,14 +160,14 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
           </div>
 
           {/* Month Nav */}
-          <div className="flex items-center bg-white rounded-lg border border-slate-300 p-0.5">
-            <button onClick={() => handleMonthChange('prev')} className="p-1 hover:bg-slate-100 rounded text-slate-600">
+          <div className="flex items-center bg-white dark:bg-slate-700 rounded-lg border border-slate-300 dark:border-slate-600 p-0.5">
+            <button onClick={() => handleMonthChange('prev')} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300">
               <ChevronLeft size={18} />
             </button>
-            <span className="px-3 text-sm font-medium text-slate-700 w-32 text-center">
+            <span className="px-3 text-sm font-medium text-slate-700 dark:text-slate-200 w-32 text-center">
               {months[currentDate.getMonth()]} {currentDate.getFullYear()}
             </span>
-            <button onClick={() => handleMonthChange('next')} className="p-1 hover:bg-slate-100 rounded text-slate-600">
+            <button onClick={() => handleMonthChange('next')} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300">
               <ChevronRight size={18} />
             </button>
           </div>
@@ -175,9 +175,9 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
       </div>
 
       {/* Grid Header */}
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+      <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
         {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-          <div key={day} className="py-2 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div key={day} className="py-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             {day}
           </div>
         ))}
@@ -186,7 +186,7 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
       {/* Grid Body */}
       <div className="grid grid-cols-7 auto-rows-fr">
         {emptySlots.map((_, index) => (
-          <div key={`empty-${index}`} className="bg-slate-50/50 border-r border-b border-slate-100 min-h-[80px]" />
+          <div key={`empty-${index}`} className="bg-slate-50/50 dark:bg-slate-800/30 border-r border-b border-slate-100 dark:border-slate-700 min-h-[80px]" />
         ))}
 
         {calendarData.map((dayData) => {
@@ -202,15 +202,15 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
             <div
               key={dayData.dateStr}
               onClick={() => setSelectedDayDetails({ date: dayData.dateStr })}
-              className={`min-h-[80px] border-r border-b border-slate-100 p-2 cursor-pointer transition-colors hover:bg-slate-50 flex flex-col justify-between relative group 
-                ${isToday ? 'bg-blue-50 ring-2 ring-inset ring-blue-400 z-10' :
-                  (allApplied ? 'bg-slate-100/50' :
-                    (isNegative ? 'bg-red-50/30' : '')
+              className={`min-h-[80px] border-r border-b border-slate-100 dark:border-slate-700 p-2 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 flex flex-col justify-between relative group 
+                ${isToday ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-inset ring-blue-400 z-10' :
+                  (allApplied ? 'bg-slate-100/50 dark:bg-slate-800/50' :
+                    (isNegative ? 'bg-red-50/30 dark:bg-red-900/10' : '')
                   )
                 }`}
             >
               <div className="flex justify-between items-start">
-                <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white' : 'text-slate-700 bg-slate-100'
+                <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white' : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700'
                   }`}>
                   {dayData.day}
                 </span>
@@ -220,13 +220,13 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
               <div className="flex flex-col gap-0.5 text-[10px] mt-2">
                 {/* Income/Expense indicators only if > 0 */}
                 {dayData.income > 0 && (
-                  <div className="flex justify-between text-emerald-600">
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                     <span>Ent:</span>
                     <span>{dayData.income.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                   </div>
                 )}
                 {dayData.expense > 0 && (
-                  <div className="flex justify-between text-rose-600">
+                  <div className="flex justify-between text-rose-600 dark:text-rose-400">
                     <span>Sai:</span>
                     <span>{dayData.expense.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                   </div>
@@ -246,11 +246,11 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-              <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                 <div>
-                  <h3 className="font-bold text-slate-800">Detalhes do Dia</h3>
-                  <p className="text-xs text-slate-500 capitalize">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100">Detalhes do Dia</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">
                     {new Date(selectedDayDetails.date).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}
                   </p>
                 </div>
@@ -261,59 +261,58 @@ const FinancialCalendar: React.FC<FinancialCalendarProps> = ({ transactions, acc
 
               <div className="p-4 max-h-[60vh] overflow-y-auto">
                 {/* Day Summary */}
-                <div className="grid grid-cols-3 gap-2 mb-4 text-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div className="grid grid-cols-3 gap-2 mb-4 text-center bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold">Saldo Inicial</p>
-                    <p className="text-sm font-semibold text-slate-700">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Saldo Inicial</p>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                       {dayData.startBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold">Movimento</p>
-                    <p className={`text-sm font-semibold ${(dayData.income - dayData.expense) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Movimento</p>
+                    <p className={`text-sm font-semibold ${(dayData.income - dayData.expense) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       {(dayData.income - dayData.expense).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold">Saldo Final</p>
-                    <p className={`text-sm font-bold ${dayData.endBalance < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Saldo Final</p>
+                    <p className={`text-sm font-bold ${dayData.endBalance < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-blue-600 dark:text-blue-400'}`}>
                       {dayData.endBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
                   </div>
                 </div>
 
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Transações</h4>
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Transações</h4>
                 {dayData.transactions.length === 0 ? (
-                  <p className="text-center text-slate-400 text-sm py-4">Nenhuma movimentação neste dia.</p>
+                  <p className="text-center text-slate-400 dark:text-slate-500 text-sm py-4">Nenhuma movimentação neste dia.</p>
                 ) : (
                   <div className="space-y-2">
                     {dayData.transactions.map((t: Transaction) => (
-                      <div key={t.id} className="flex items-center justify-between p-2 border border-slate-100 rounded hover:bg-slate-50">
+                      <div key={t.id} className="flex items-center justify-between p-2 border border-slate-100 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50">
                         <div className="flex items-center gap-3">
-                          <div className={`p-1.5 rounded-full ${t.type === TransactionType.INCOME ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                          <div className={`p-1.5 rounded-full ${t.type === TransactionType.INCOME ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                             {t.type === TransactionType.INCOME ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-800 line-clamp-1">{t.description}</p>
-                            <p className="text-xs text-slate-500">{t.category}</p>
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 line-clamp-1">{t.description}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{t.category}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`text-sm font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          <p className={`text-sm font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                             {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </p>
                           <div className="flex items-center justify-end gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
-                            <label className="flex items-center gap-1 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={t.isApplied || false}
-                                onChange={() => onToggleTransactionStatus(t)}
-                                className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                              />
-                              <span className="text-[10px] text-slate-500">
-                                {t.isApplied ? 'Aplicado' : 'Pendente'}
-                              </span>
-                            </label>
+                            <button
+                              onClick={() => onToggleTransactionStatus(t)}
+                              className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${t.isApplied
+                                ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+                                : 'text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
+                                }`}
+                            >
+                              {t.isApplied ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                              {t.isApplied ? 'Aplicado' : 'Pendente'}
+                            </button>
                           </div>
                         </div>
                       </div>

@@ -16,6 +16,7 @@ import BudgetGeneratorModal from './components/BudgetGeneratorModal';
 import OFXImportModal from './components/OFXImportModal';
 import CSVImportModal from './components/CSVImportModal';
 import BackupModal from './components/BackupModal';
+import SettingsModal from './components/SettingsModal';
 import { performBackupToDrive } from './services/driveService';
 import { transactionService, categoryService, accountService, budgetService, goalService, wealthConfigService, dataService } from './services/api';
 import { Transaction, Category, TransactionType, CategorySubtype, Budget, Account, AccountType, BackupData, FinancialGoal, WealthConfig, GoogleDriveConfig } from './types';
@@ -47,7 +48,13 @@ const App: React.FC = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [wealthConfig, setWealthConfig] = useState<WealthConfig>({ passiveIncomeGoal: 0 });
+
   const [driveConfig, setDriveConfig] = useState<GoogleDriveConfig>({ enabled: false, clientId: '', folderId: '' });
+
+  // Settings State
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [notificationDays, setNotificationDays] = useState(3);
+  const [darkMode, setDarkMode] = useState(false);
 
   const [driveStatus, setDriveStatus] = useState<string>(''); // For visual feedback
 
@@ -82,6 +89,101 @@ const App: React.FC = () => {
       }
     };
     loadData();
+  }, []);
+
+  // Load Settings
+  useEffect(() => {
+    const storedDays = localStorage.getItem('notificationDays');
+    if (storedDays) setNotificationDays(parseInt(storedDays));
+
+    const storedDarkMode = localStorage.getItem('darkMode');
+    if (storedDarkMode === 'true') {
+      setDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  // Notification Check
+  useEffect(() => {
+    if (!isLoading && transactions.length > 0) {
+      const checkNotifications = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const futureDate = new Date(today);
+        futureDate.setDate(today.getDate() + notificationDays);
+
+        const pending = transactions.filter(t => {
+          if (t.isApplied) return false;
+          // Only consider expenses
+          if (t.type !== TransactionType.EXPENSE) return false;
+
+          const tDate = new Date(t.date);
+          // Fix timezone issue by treating date string as UTC or local noon
+          const tDateLocal = new Date(tDate.getUTCFullYear(), tDate.getUTCMonth(), tDate.getUTCDate());
+
+          return tDateLocal >= today && tDateLocal <= futureDate;
+        });
+
+        if (pending.length > 0) {
+          if ("Notification" in window) {
+            if (Notification.permission === "granted") {
+              new Notification("Contas a Pagar", { body: `Você tem ${pending.length} contas pendentes nos próximos ${notificationDays} dias.` });
+            } else if (Notification.permission !== "denied") {
+              Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                  new Notification("Contas a Pagar", { body: `Você tem ${pending.length} contas pendentes nos próximos ${notificationDays} dias.` });
+                }
+              });
+            }
+          }
+        }
+      };
+
+      // Small delay to ensure UI is ready
+      setTimeout(checkNotifications, 1000);
+    }
+  }, [isLoading, transactions.length, notificationDays]); // Run when loading finishes
+
+  const handleSaveNotificationDays = (days: number) => {
+    setNotificationDays(days);
+    localStorage.setItem('notificationDays', days.toString());
+  };
+
+  const handleToggleDarkMode = (enabled: boolean) => {
+    setDarkMode(enabled);
+    localStorage.setItem('darkMode', enabled.toString());
+    if (enabled) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
+  const handleSaveDriveConfig = (config: GoogleDriveConfig) => {
+    setDriveConfig(config);
+    // Save to localStorage or wherever driveConfig is persisted (currently it seems it's not persisted in App.tsx state init, but maybe in driveService?)
+    // The driveConfig state in App.tsx is initialized with empty values.
+    // I should probably persist it to localStorage as well for now, or rely on the `loadData` if it comes from backend.
+    // The `loadData` doesn't seem to load `driveConfig` from API?
+    // Wait, `loadData` calls `wealthConfigService.get()`, but not drive config.
+    // Ah, `BackupModal` was managing it? No, `BackupModal` received `driveConfig` prop.
+    // Where does `driveConfig` come from?
+    // In `App.tsx` line 50: `const [driveConfig, setDriveConfig] = useState...`
+    // It seems it's not being loaded from anywhere in `loadData`.
+    // I should persist it to localStorage for simplicity.
+    localStorage.setItem('driveConfig', JSON.stringify(config));
+  };
+
+  // Load Drive Config
+  useEffect(() => {
+    const storedDriveConfig = localStorage.getItem('driveConfig');
+    if (storedDriveConfig) {
+      try {
+        setDriveConfig(JSON.parse(storedDriveConfig));
+      } catch (e) {
+        console.error("Failed to parse drive config", e);
+      }
+    }
   }, []);
 
   // ... (Auto Backup Logic omitted for brevity, it remains unchanged)
@@ -744,15 +846,18 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Header />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+      <Header
+        onReset={() => setIsBackupModalOpen(true)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
+      />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <p className="text-sm text-slate-500 font-medium mb-1">Entradas (Realizadas)</p>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Entradas (Realizadas)</p>
             <p className="text-xl font-bold text-emerald-600 tracking-tight">
               {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
@@ -760,8 +865,8 @@ const App: React.FC = () => {
               + {futureIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} pendentes
             </p>
           </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <p className="text-sm text-slate-500 font-medium mb-1">Saídas (Realizadas)</p>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saídas (Realizadas)</p>
             <p className="text-xl font-bold text-rose-600 tracking-tight">
               {totalExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
@@ -769,35 +874,35 @@ const App: React.FC = () => {
               + {futureExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} pendentes
             </p>
           </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <p className="text-sm text-slate-500 font-medium mb-1">Saldo Líquido</p>
-            <p className={`text-xl font-bold tracking-tight ${balance >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saldo Líquido</p>
+            <p className={`text-xl font-bold tracking-tight ${balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <p className="text-sm text-slate-500 font-medium mb-1">Saldo Real (c/ Inicial)</p>
-            <p className={`text-xl font-bold tracking-tight ${balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0) >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saldo Real (c/ Inicial)</p>
+            <p className={`text-xl font-bold tracking-tight ${balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0) >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {(balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex space-x-1 rounded-xl bg-slate-200 p-1 mb-6 overflow-x-auto no-scrollbar">
+        <div className="flex space-x-1 rounded-xl bg-slate-200 dark:bg-slate-800 p-1 mb-6 overflow-x-auto no-scrollbar">
           {[
-            { id: 'transactions', label: 'Movimentações', icon: LayoutDashboard, color: 'text-blue-700' },
-            { id: 'cards', label: 'Cartões', icon: CreditCard, color: 'text-pink-700' },
-            { id: 'accounts', label: 'Contas', icon: Landmark, color: 'text-indigo-700' },
-            { id: 'categories', label: 'Categorias', icon: Tags, color: 'text-purple-700' },
-            { id: 'budget', label: 'Orçamento', icon: PieChart, color: 'text-amber-700' },
-            { id: 'wealth', label: 'Patrimônio', icon: TrendingUp, color: 'text-indigo-600' },
-            { id: 'reports', label: 'Relatórios', icon: BarChart3, color: 'text-teal-700' },
+            { id: 'transactions', label: 'Movimentações', icon: LayoutDashboard, color: 'text-blue-700', darkColor: 'dark:text-blue-400' },
+            { id: 'cards', label: 'Cartões', icon: CreditCard, color: 'text-pink-700', darkColor: 'dark:text-pink-400' },
+            { id: 'accounts', label: 'Contas', icon: Landmark, color: 'text-indigo-700', darkColor: 'dark:text-indigo-400' },
+            { id: 'categories', label: 'Categorias', icon: Tags, color: 'text-purple-700', darkColor: 'dark:text-purple-400' },
+            { id: 'budget', label: 'Orçamento', icon: PieChart, color: 'text-amber-700', darkColor: 'dark:text-amber-400' },
+            { id: 'wealth', label: 'Patrimônio', icon: TrendingUp, color: 'text-indigo-600', darkColor: 'dark:text-indigo-400' },
+            { id: 'reports', label: 'Relatórios', icon: BarChart3, color: 'text-teal-700', darkColor: 'dark:text-teal-400' },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4 ${activeTab === tab.id ? `bg-white shadow ${tab.color}` : 'text-slate-600 hover:bg-white/[0.12] hover:text-slate-800'
+              className={`flex-1 rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4 ${activeTab === tab.id ? `bg-white dark:bg-slate-700 shadow ${tab.color} ${tab.darkColor}` : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
             >
               <tab.icon size={18} />
@@ -887,6 +992,7 @@ const App: React.FC = () => {
               categories={categories}
               transactions={transactions}
               budgets={budgets}
+              accounts={accounts}
               onSaveBudget={handleSaveBudget}
               onSaveBudgets={handleSaveBulkBudgets}
             />
@@ -997,6 +1103,19 @@ const App: React.FC = () => {
         driveConfig={driveConfig}
         onSaveDriveConfig={setDriveConfig}
         onManualDriveBackup={handleManualDriveBackup}
+      />
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        notificationDays={notificationDays}
+        onSaveNotificationDays={handleSaveNotificationDays}
+        driveConfig={driveConfig}
+        onSaveDriveConfig={handleSaveDriveConfig}
+        onManualDriveBackup={handleManualDriveBackup}
+        driveStatus={driveStatus}
+        darkMode={darkMode}
+        onToggleDarkMode={handleToggleDarkMode}
       />
     </div>
   );

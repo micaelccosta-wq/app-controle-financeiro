@@ -181,27 +181,27 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories, bud
       <div className="space-y-8">
 
          {/* Filters */}
-         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-4">
-            <div className="flex items-center gap-2 text-slate-500 mb-3 mr-2">
+         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap items-end gap-4">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-3 mr-2">
                <Filter size={20} />
                <span className="font-bold">Filtros</span>
             </div>
             <div>
-               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">De</label>
+               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">De</label>
                <input
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 dark:text-white"
                />
             </div>
             <div>
-               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Até</label>
+               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Até</label>
                <input
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 dark:text-white"
                />
             </div>
             {(startDate || endDate) && (
@@ -215,8 +215,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories, bud
          </div>
 
          {/* 1. Income vs Expense (Dynamic Line Chart) */}
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
                <TrendingUp className="text-emerald-600" size={20} />
                Evolução: Receitas x Despesas
             </h3>
@@ -274,8 +274,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories, bud
          </div>
 
          {/* 2. Planned vs Executed (Bar Chart) */}
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
                <BarChartIcon className="text-blue-600" size={20} />
                Planejado x Executado (Por Categoria)
             </h3>
@@ -310,8 +310,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories, bud
          </div>
 
          {/* 3. Expenses by Category (Pie) */}
-         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
                <PieChart className="text-purple-600" size={20} />
                Distribuição de Despesas
             </h3>
@@ -327,21 +327,21 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories, bud
                      }).join(', ')})` : '#f1f5f9'
                   }}
                >
-                  <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center flex-col shadow-sm">
+                  <div className="w-32 h-32 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center flex-col shadow-sm">
                      <span className="text-xs text-slate-400">Total</span>
-                     <span className="font-bold text-slate-800">{formatCurrencyNoDecimals(totalExpenses)}</span>
+                     <span className="font-bold text-slate-800 dark:text-slate-100">{formatCurrencyNoDecimals(totalExpenses)}</span>
                   </div>
                </div>
 
                <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {categoryData.map(d => (
-                     <div key={d.name} className="flex items-center justify-between p-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+                     <div key={d.name} className="flex items-center justify-between p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors shadow-sm">
                         <div className="flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full shrink-0 border border-slate-300" style={{ backgroundColor: d.color }}></span>
-                           <span className="text-sm text-slate-600 font-medium truncate max-w-[120px]" title={d.name}>{d.name}</span>
+                           <span className="w-3 h-3 rounded-full shrink-0 border border-slate-300 dark:border-slate-600" style={{ backgroundColor: d.color }}></span>
+                           <span className="text-sm text-slate-600 dark:text-slate-300 font-medium truncate max-w-[120px]" title={d.name}>{d.name}</span>
                         </div>
                         <div className="text-right">
-                           <span className="text-sm font-bold text-slate-800 block">
+                           <span className="text-sm font-bold text-slate-800 dark:text-slate-100 block">
                               {formatCurrency(d.value)}
                            </span>
                            <span className="text-[10px] text-slate-400">
@@ -360,23 +360,23 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories, bud
          {/* Details Modal */}
          {detailsModalOpen && selectedPointData && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-               <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
-                  <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+               <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                      <div>
-                        <h3 className="font-bold text-slate-800 text-lg">Detalhes: {selectedPointData.label}</h3>
-                        <p className="text-xs text-slate-500">
-                           Receitas: <span className="text-emerald-600 font-bold">{formatCurrency(selectedPointData.income)}</span> •
-                           Despesas: <span className="text-rose-600 font-bold ml-1">{formatCurrency(selectedPointData.expense)}</span>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Detalhes: {selectedPointData.label}</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                           Receitas: <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatCurrency(selectedPointData.income)}</span> •
+                           Despesas: <span className="text-rose-600 dark:text-rose-400 font-bold ml-1">{formatCurrency(selectedPointData.expense)}</span>
                         </p>
                      </div>
-                     <button onClick={() => setDetailsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                     <button onClick={() => setDetailsModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                         <X size={24} />
                      </button>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-0">
                      <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 shadow-sm">
+                        <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 font-medium sticky top-0 shadow-sm">
                            <tr>
                               <th className="px-6 py-3">Data</th>
                               <th className="px-6 py-3">Descrição</th>
@@ -384,25 +384,25 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, categories, bud
                               <th className="px-6 py-3 text-right">Valor</th>
                            </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                            {selectedPointData.transactions.length > 0 ? (
                               selectedPointData.transactions
                                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                  .map(t => (
-                                    <tr key={t.id} className="hover:bg-slate-50">
-                                       <td className="px-6 py-3 text-slate-600">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
-                                       <td className="px-6 py-3 font-medium text-slate-800">{t.description}</td>
-                                       <td className="px-6 py-3 text-slate-500">
+                                    <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                       <td className="px-6 py-3 text-slate-600 dark:text-slate-300">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                                       <td className="px-6 py-3 font-medium text-slate-800 dark:text-slate-100">{t.description}</td>
+                                       <td className="px-6 py-3 text-slate-500 dark:text-slate-400">
                                           {t.category}
-                                          {t.split && t.split.length > 0 && <span className="text-xs text-blue-500 ml-1">(Split)</span>}
+                                          {t.split && t.split.length > 0 && <span className="text-xs text-blue-500 dark:text-blue-400 ml-1">(Split)</span>}
                                        </td>
-                                       <td className={`px-6 py-3 text-right font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                       <td className={`px-6 py-3 text-right font-bold ${t.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                           {t.type === TransactionType.EXPENSE ? '-' : '+'}{formatCurrency(t.amount)}
                                        </td>
                                     </tr>
                                  ))
                            ) : (
-                              <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Nenhum movimento neste período.</td></tr>
+                              <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400 dark:text-slate-500">Nenhum movimento neste período.</td></tr>
                            )}
                         </tbody>
                      </table>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Category, Transaction, Budget, TransactionType } from '../types';
+import { Category, Transaction, Budget, TransactionType, Account } from '../types';
 import { ChevronLeft, ChevronRight, AlertCircle, ArrowRightLeft, Wallet, PieChart, TrendingUp, Layers, ShoppingBag, Activity, X, Calendar, Filter, RefreshCw, BarChart2, Search } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import BudgetReallocationModal from './BudgetReallocationModal';
@@ -11,6 +11,7 @@ interface BudgetViewProps {
   categories: Category[];
   transactions: Transaction[];
   budgets: Budget[];
+  accounts: Account[];
   onSaveBudget: (budget: Budget) => void;
   onSaveBudgets: (budgets: Budget[]) => Promise<void>;
 }
@@ -38,12 +39,12 @@ const BudgetInput: React.FC<BudgetInputProps> = ({ initialValue, onSave }) => {
       onChange={(e) => setLocalValue(e.target.value)}
       onBlur={handleBlur}
       placeholder="0.00"
-      className="w-28 pl-8 pr-2 py-1 text-right text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+      className="w-28 pl-8 pr-2 py-1 text-right text-sm border border-slate-300 dark:border-slate-600 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 dark:text-white"
     />
   );
 };
 
-const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budgets, onSaveBudget, onSaveBudgets }) => {
+const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budgets, accounts, onSaveBudget, onSaveBudgets }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isYearlyEditOpen, setIsYearlyEditOpen] = useState(false);
@@ -54,7 +55,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
   // Details Modal State
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [detailsModalType, setDetailsModalType] = useState<'INCOME' | 'BUDGET' | null>(null);
+  const [detailsModalType, setDetailsModalType] = useState<'INCOME' | 'BUDGET' | 'EXPENSE_REALIZED' | null>(null);
   const [detailsModalData, setDetailsModalData] = useState<{ title: string; total: number; items: Transaction[] } | null>(null);
 
   // Reallocation State
@@ -289,6 +290,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       total: getRealizedAmount(category.name),
       items: categoryTransactions
     });
+    setDetailsModalType('EXPENSE_REALIZED');
     setDetailsModalOpen(true);
   };
 
@@ -313,14 +315,14 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     <div className="space-y-6">
 
       {/* Date Filters */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-4">
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap items-end gap-4">
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">De</label>
           <input
             type="date"
             value={filterStartDate}
             onChange={e => setFilterStartDate(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 dark:text-white"
           />
         </div>
         <div>
@@ -329,7 +331,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
             type="date"
             value={filterEndDate}
             onChange={e => setFilterEndDate(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-700 dark:text-white"
           />
         </div>
         {(filterStartDate || filterEndDate) && (
@@ -343,23 +345,23 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       </div>
 
       {/* Category X-Ray Section */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-3 mb-6">
           <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
             <BarChart2 size={24} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-800">Raio-X da Categoria</h3>
-            <p className="text-sm text-slate-500">Acompanhe a evolução do planejado vs realizado</p>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Raio-X da Categoria</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Acompanhe a evolução do planejado vs realizado</p>
           </div>
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-slate-700 mb-2">Selecione uma Categoria</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Selecione uma Categoria</label>
           <select
             value={xRayCategoryId}
             onChange={(e) => setXRayCategoryId(e.target.value)}
-            className="w-full md:w-1/3 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="w-full md:w-1/3 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-700 dark:text-white"
           >
             <option value="">Selecione...</option>
             {expenseCategories.sort((a, b) => a.name.localeCompare(b.name)).map(cat => (
@@ -465,14 +467,14 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
         {/* Total Income (Global) */}
         <div
           onClick={() => { setDetailsModalType('INCOME'); setDetailsModalOpen(true); }}
-          className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all"
+          className="flex items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all"
         >
           <div className="bg-emerald-100 p-2.5 rounded-lg text-emerald-600">
             <TrendingUp size={24} />
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Total Receitas (Período)</p>
-            <p className="text-xl font-bold text-slate-800">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Total Receitas (Período)</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
               {globalTotalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
@@ -481,27 +483,27 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
         {/* Total Budgeted (Global) */}
         <div
           onClick={() => { setDetailsModalType('BUDGET'); setDetailsModalOpen(true); }}
-          className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:border-blue-300 hover:shadow-md transition-all"
+          className="flex items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all"
         >
           <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600">
             <Layers size={24} />
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Total Orçado (Período)</p>
-            <p className="text-xl font-bold text-slate-800">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Total Orçado (Período)</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
               {globalTotalBudgeted.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
         </div>
 
         {/* Available (Global) */}
-        <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <div className={`p-2.5 rounded-lg ${globalAvailableForAllocation >= 0 ? 'bg-indigo-100 text-indigo-600' : 'bg-rose-100 text-rose-600'}`}>
             <Wallet size={24} />
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Disponível p/ Alocação</p>
-            <p className={`text-xl font-bold ${globalAvailableForAllocation >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Disponível p/ Alocação</p>
+            <p className={`text-xl font-bold ${globalAvailableForAllocation >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {globalAvailableForAllocation.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
@@ -509,22 +511,21 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       </div>
 
       {/* 2. Month Selector */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <button onClick={() => handleMonthChange('prev')} className="p-2 hover:bg-slate-100 rounded-full text-slate-600 transition-colors">
+          <button onClick={() => handleMonthChange('prev')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300 transition-colors">
             <ChevronLeft />
           </button>
-          <h2 className="text-lg font-bold text-slate-800 w-48 text-center">
-            {months[selectedMonth]} <span className="text-slate-500 font-normal">{selectedYear}</span>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 w-48 text-center">
           </h2>
-          <button onClick={() => handleMonthChange('next')} className="p-2 hover:bg-slate-100 rounded-full text-slate-600 transition-colors">
+          <button onClick={() => handleMonthChange('next')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300 transition-colors">
             <ChevronRight />
           </button>
         </div>
 
         <button
           onClick={() => setIsYearlyEditOpen(true)}
-          className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-200"
+          className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
         >
           <PieChart size={16} />
           Editar Ano Inteiro
@@ -532,7 +533,7 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
         <button
           onClick={handleSyncRealizedToPlanned}
-          className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors border border-emerald-200 ml-2"
+          className="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors border border-emerald-200 dark:border-emerald-800 ml-2"
           title="Copiar valores realizados para o orçamento"
         >
           <RefreshCw size={16} />
@@ -543,44 +544,44 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       {/* 3. Monthly Specific Stats (Budgeted vs Realized vs Balance) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Budgeted This Month */}
-        <div className="flex items-center gap-4 px-6 py-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="bg-slate-100 p-2 rounded-lg text-slate-600">
+        <div className="flex items-center gap-4 px-6 py-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-slate-100 dark:bg-slate-700 p-2 rounded-lg text-slate-600 dark:text-slate-300">
             <PieChart size={24} />
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Orçado (Mês)</p>
-            <p className="text-xl font-bold text-slate-800">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Orçado (Mês)</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
               {monthlyTotalBudgeted.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
         </div>
 
         {/* Realized This Month */}
-        <div className="flex items-center gap-4 px-6 py-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="bg-rose-50 p-2 rounded-lg text-rose-600">
+        <div className="flex items-center gap-4 px-6 py-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-rose-50 dark:bg-rose-900/20 p-2 rounded-lg text-rose-600 dark:text-rose-400">
             <ShoppingBag size={24} />
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Realizado (Mês)</p>
-            <p className="text-xl font-bold text-rose-600">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Realizado (Mês)</p>
+            <p className="text-xl font-bold text-rose-600 dark:text-rose-400">
               {monthlyTotalRealized.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
         </div>
 
         {/* Balance / Progress */}
-        <div className="flex flex-col justify-center px-6 py-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col justify-center px-6 py-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center gap-2">
               <Activity size={16} className="text-slate-400" />
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Status do Mês</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Status do Mês</span>
             </div>
-            <span className={`text-xs font-bold ${monthlyPercentage >= 100 ? 'text-rose-600' : 'text-slate-600'}`}>
+            <span className={`text-xs font-bold ${monthlyPercentage >= 100 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
               {monthlyPercentage.toFixed(1)}%
             </span>
           </div>
 
-          <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden mb-2">
+          <div className="relative h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mb-2">
             <div
               className={`absolute top-0 left-0 h-full ${monthlyBarColor} transition-all duration-500 ease-out`}
               style={{ width: `${monthlyPercentage}%` }}
@@ -604,14 +605,14 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       {/* 4. Budget List - Grouped by Fixed/Variable */}
       <div className="space-y-8">
         {/* Fixed Expenses */}
-        <div className="border border-slate-200 rounded-xl p-6 bg-white shadow-sm">
-          <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+        <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
             <span className="w-2 h-8 bg-blue-500 rounded-full"></span>
             Despesas Fixas
           </h3>
           <div className="grid grid-cols-1 gap-4">
             {fixedCategories.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              <div className="text-center py-8 text-slate-400 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
                 Nenhuma despesa fixa encontrada.
               </div>
             ) : (
@@ -631,14 +632,14 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
         </div>
 
         {/* Variable Expenses */}
-        <div className="border border-slate-200 rounded-xl p-6 bg-white shadow-sm">
-          <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+        <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-6 bg-white dark:bg-slate-800 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
             <span className="w-2 h-8 bg-amber-500 rounded-full"></span>
             Despesas Variáveis
           </h3>
           <div className="grid grid-cols-1 gap-4">
             {variableCategories.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              <div className="text-center py-8 text-slate-400 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
                 Nenhuma despesa variável encontrada.
               </div>
             ) : (
@@ -678,10 +679,11 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
       {/* Details Modal */}
       {detailsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-slate-800 text-lg">
-                {detailsModalType === 'INCOME' ? 'Detalhamento de Receitas' : 'Detalhamento do Orçamento'}
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
+                {detailsModalType === 'INCOME' ? 'Detalhamento de Receitas' :
+                  detailsModalType === 'EXPENSE_REALIZED' ? detailsModalData?.title : 'Detalhamento do Orçamento'}
               </h3>
               <button onClick={() => setDetailsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={24} />
@@ -690,13 +692,20 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
 
             <div className="flex-1 overflow-y-auto p-0">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 shadow-sm">
+                <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 font-medium sticky top-0 shadow-sm">
                   <tr>
                     {detailsModalType === 'INCOME' ? (
                       <>
                         <th className="px-6 py-3">Data</th>
                         <th className="px-6 py-3">Descrição</th>
                         <th className="px-6 py-3">Categoria</th>
+                        <th className="px-6 py-3 text-right">Valor</th>
+                      </>
+                    ) : detailsModalType === 'EXPENSE_REALIZED' ? (
+                      <>
+                        <th className="px-6 py-3">Data</th>
+                        <th className="px-6 py-3">Descrição</th>
+                        <th className="px-6 py-3">Conta</th>
                         <th className="px-6 py-3 text-right">Valor</th>
                       </>
                     ) : (
@@ -708,15 +717,15 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {detailsModalType === 'INCOME' ? (
                     globalIncomeTransactions.length > 0 ? (
                       globalIncomeTransactions
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                         .map(t => (
-                          <tr key={t.id} className="hover:bg-slate-50">
-                            <td className="px-6 py-3 text-slate-600">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
-                            <td className="px-6 py-3 font-medium text-slate-800">{t.description}</td>
+                          <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="px-6 py-3 text-slate-600 dark:text-slate-300">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                            <td className="px-6 py-3 font-medium text-slate-800 dark:text-slate-100">{t.description}</td>
                             <td className="px-6 py-3 text-slate-500">
                               {t.category}
                               {t.split && t.split.length > 0 && <span className="text-xs text-blue-500 ml-1">(Split)</span>}
@@ -729,6 +738,43 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                     ) : (
                       <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Nenhuma receita no período.</td></tr>
                     )
+                  ) : detailsModalType === 'EXPENSE_REALIZED' ? (
+                    detailsModalData?.items && detailsModalData.items.length > 0 ? (
+                      detailsModalData.items
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map(t => {
+                          const accountName = accounts.find(a => a.id === t.accountId)?.name || '-';
+                          let amount = t.amount;
+                          // Handle split amount if needed
+                          if (t.split && t.split.length > 0) {
+                            // Find the split part that matches the category
+                            // Note: detailsModalData.title contains "Detalhes: CategoryName"
+                            const catName = detailsModalData.title.replace('Detalhes: ', '');
+                            const split = t.split.find(s => {
+                              let sName = s.categoryName;
+                              if (sName.includes(':')) sName = sName.split(':')[0].trim();
+                              return sName === catName;
+                            });
+                            if (split) amount = split.amount;
+                          }
+
+                          return (
+                            <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                              <td className="px-6 py-3 text-slate-600 dark:text-slate-300">{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                              <td className="px-6 py-3 font-medium text-slate-800 dark:text-slate-100">
+                                {t.description}
+                                {t.split && t.split.length > 0 && <span className="text-xs text-blue-500 ml-1">(Split)</span>}
+                              </td>
+                              <td className="px-6 py-3 text-slate-500">{accountName}</td>
+                              <td className="px-6 py-3 text-right font-bold text-rose-600">
+                                {amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </td>
+                            </tr>
+                          );
+                        })
+                    ) : (
+                      <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Nenhuma transação encontrada.</td></tr>
+                    )
                   ) : (
                     globalBudgetEntries.length > 0 ? (
                       globalBudgetEntries
@@ -739,9 +785,9 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
                         .map(b => {
                           const catName = categories.find(c => c.id === b.categoryId)?.name || 'Desconhecida';
                           return (
-                            <tr key={b.id} className="hover:bg-slate-50">
-                              <td className="px-6 py-3 text-slate-600">{months[b.month]} / {b.year}</td>
-                              <td className="px-6 py-3 font-medium text-slate-800">{catName}</td>
+                            <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                              <td className="px-6 py-3 text-slate-600 dark:text-slate-300">{months[b.month]} / {b.year}</td>
+                              <td className="px-6 py-3 font-medium text-slate-800 dark:text-slate-100">{catName}</td>
                               <td className="px-6 py-3 text-right font-bold text-blue-600">
                                 {b.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                               </td>
