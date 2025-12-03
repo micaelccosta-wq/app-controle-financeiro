@@ -275,6 +275,20 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
     onSaveBudgets(newBudgets);
   };
 
+  const handleOpenRealizedMonthDetails = () => {
+    const monthTransactions = transactions.filter(t => {
+      return t.type === TransactionType.EXPENSE && isTransactionInMonth(t, selectedMonth, selectedYear);
+    });
+
+    setDetailsModalData({
+      title: `Realizado em ${months[selectedMonth]}/${selectedYear}`,
+      total: monthlyTotalRealized,
+      items: monthTransactions
+    });
+    setDetailsModalType('EXPENSE_REALIZED');
+    setDetailsModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
 
@@ -480,8 +494,19 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
           <button onClick={() => handleMonthChange('prev')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300 transition-colors">
             <ChevronLeft />
           </button>
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 w-48 text-center">
-            {months[selectedMonth]} / {selectedYear}
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 w-48 text-center flex items-center justify-center gap-2">
+            {months[selectedMonth]}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="bg-transparent border-none outline-none cursor-pointer hover:text-blue-600 focus:ring-0 text-lg font-bold appearance-none"
+            >
+              {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
+                <option key={year} value={year} className="text-slate-800 bg-white dark:bg-slate-800">
+                  {year}
+                </option>
+              ))}
+            </select>
           </h2>
           <button onClick={() => handleMonthChange('next')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300 transition-colors">
             <ChevronRight />
@@ -515,7 +540,10 @@ const BudgetView: React.FC<BudgetViewProps> = ({ categories, transactions, budge
         </div>
 
         {/* Realized This Month */}
-        <div className="flex items-center gap-4 px-6 py-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div
+          onClick={handleOpenRealizedMonthDetails}
+          className="flex items-center gap-4 px-6 py-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 hover:shadow-md transition-all"
+        >
           <div className="bg-rose-50 dark:bg-rose-900/20 p-2 rounded-lg text-rose-600 dark:text-rose-400">
             <ShoppingBag size={24} />
           </div>
