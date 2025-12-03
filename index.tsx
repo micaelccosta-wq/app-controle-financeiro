@@ -11,8 +11,7 @@ if (!rootElement) {
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './contexts/AuthContext';
 
-// TODO: Replace with your actual Google Client ID
-const GOOGLE_CLIENT_ID = "260728080179-i7fnhdj14jh3oi1pe3r6ppdimhchca1v.apps.googleusercontent.com";
+import { GOOGLE_CLIENT_ID } from './config';
 
 const root = createRoot(rootElement);
 root.render(

@@ -1,5 +1,6 @@
 
 import { BackupData, GoogleDriveConfig } from '../types';
+import { GOOGLE_CLIENT_ID } from '../config';
 
 // Types for Global Google Objects
 declare global {
@@ -16,7 +17,7 @@ const SCOPES = 'https://www.googleapis.com/auth/drive';
 export const initGoogleDrive = async (clientId: string): Promise<boolean> => {
   // Verificação de protocolo (Log apenas, não bloqueia mais para evitar falsos positivos em ambientes dev)
   if (window.location.protocol !== 'http:' && window.location.protocol !== 'https:') {
-     console.warn("ATENÇÃO: A API do Google pode não funcionar no protocolo atual (" + window.location.protocol + "). É necessário rodar em um servidor local (http://localhost).");
+    console.warn("ATENÇÃO: A API do Google pode não funcionar no protocolo atual (" + window.location.protocol + "). É necessário rodar em um servidor local (http://localhost).");
   }
 
   if (!window.gapi || !window.google) {
@@ -41,18 +42,21 @@ export const initGoogleDrive = async (clientId: string): Promise<boolean> => {
 };
 
 export const performBackupToDrive = async (
-  config: GoogleDriveConfig, 
+  config: GoogleDriveConfig,
   data: BackupData,
   isAuto: boolean = false
 ): Promise<{ success: boolean; message: string }> => {
-  
-  if (!config.enabled || !config.clientId || !config.folderId) {
+
+  // Use global ID if not provided in config (backward compatibility or simplification)
+  const effectiveClientId = config.clientId || GOOGLE_CLIENT_ID;
+
+  if (!config.enabled || !effectiveClientId || !config.folderId) {
     return { success: false, message: "Configuração incompleta." };
   }
 
   try {
     // 1. Initialize Client if needed
-    const initialized = await initGoogleDrive(config.clientId);
+    const initialized = await initGoogleDrive(effectiveClientId);
     if (!initialized) {
       return { success: false, message: "Falha ao inicializar scripts do Google. Certifique-se de rodar via servidor local (http)." };
     }
@@ -61,73 +65,73 @@ export const performBackupToDrive = async (
       // Wrapper to handle the async upload after getting token
       const uploadLogic = async (tokenResponse: any) => {
         if (tokenResponse && tokenResponse.access_token) {
-           try {
-             const fileName = `financas-auto-backup-${new Date().toISOString().split('T')[0]}.json`;
-             const fileContent = JSON.stringify(data, null, 2);
-             
-             const file = new Blob([fileContent], {type: 'application/json'});
-             const metadata = {
-               name: fileName,
-               mimeType: 'application/json',
-               parents: [config.folderId]
-             };
+          try {
+            const fileName = `financas-auto-backup-${new Date().toISOString().split('T')[0]}.json`;
+            const fileContent = JSON.stringify(data, null, 2);
 
-             const accessToken = tokenResponse.access_token;
-             const form = new FormData();
-             form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-             form.append('file', file);
+            const file = new Blob([fileContent], { type: 'application/json' });
+            const metadata = {
+              name: fileName,
+              mimeType: 'application/json',
+              parents: [config.folderId]
+            };
 
-             const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-               method: 'POST',
-               headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
-               body: form,
-             });
+            const accessToken = tokenResponse.access_token;
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', file);
 
-             if (response.ok) {
-                resolve({ success: true, message: "Backup salvo no Drive com sucesso!" });
-             } else {
-                const err = await response.json();
-                console.error("Drive API Upload Error:", err);
-                resolve({ success: false, message: "Erro ao enviar arquivo. Verifique se o ID da Pasta está correto e compartilhado." });
-             }
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+              method: 'POST',
+              headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+              body: form,
+            });
 
-           } catch (uErr) {
-             console.error(uErr);
-             resolve({ success: false, message: "Erro de rede durante o upload." });
-           }
+            if (response.ok) {
+              resolve({ success: true, message: "Backup salvo no Drive com sucesso!" });
+            } else {
+              const err = await response.json();
+              console.error("Drive API Upload Error:", err);
+              resolve({ success: false, message: "Erro ao enviar arquivo. Verifique se o ID da Pasta está correto e compartilhado." });
+            }
+
+          } catch (uErr) {
+            console.error(uErr);
+            resolve({ success: false, message: "Erro de rede durante o upload." });
+          }
         } else {
-           resolve({ success: false, message: "Permissão negada ou token inválido." });
+          resolve({ success: false, message: "Permissão negada ou token inválido." });
         }
       };
 
       try {
         // 2. Request Token with ERROR HANDLING
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: config.clientId,
+          client_id: effectiveClientId,
           scope: SCOPES,
           callback: uploadLogic,
           error_callback: (error: any) => {
-             // Captura erros de origem como 'redirect_uri_mismatch' ou 'storagerelay'
-             console.error("Google Auth Error Callback:", error);
-             
-             let msg = "Erro de Autorização.";
-             if (error.type === 'popup_closed') msg = "Janela de login fechada ou bloqueada pelo navegador. Se for backup automático, isso é esperado se o popup for bloqueado.";
-             if (error.type === 'redirect_uri_mismatch' || error.message?.includes('origin')) {
-                msg = "Erro de Origem: Adicione a URL atual no 'Authorized JavaScript origins' do Google Cloud.";
-             }
+            // Captura erros de origem como 'redirect_uri_mismatch' ou 'storagerelay'
+            console.error("Google Auth Error Callback:", error);
 
-             resolve({ 
-               success: false, 
-               message: msg
-             });
+            let msg = "Erro de Autorização.";
+            if (error.type === 'popup_closed') msg = "Janela de login fechada ou bloqueada pelo navegador. Se for backup automático, isso é esperado se o popup for bloqueado.";
+            if (error.type === 'redirect_uri_mismatch' || error.message?.includes('origin')) {
+              msg = "Erro de Origem: Adicione a URL atual no 'Authorized JavaScript origins' do Google Cloud.";
+            }
+
+            resolve({
+              success: false,
+              message: msg
+            });
           }
         });
-        
+
         // Se for automático, tenta silencioso. Se for manual, força o prompt para permitir login.
         if (isAuto) {
-           tokenClient.requestAccessToken({ prompt: '' }); 
+          tokenClient.requestAccessToken({ prompt: '' });
         } else {
-           tokenClient.requestAccessToken({ prompt: 'consent' });
+          tokenClient.requestAccessToken({ prompt: 'consent' });
         }
 
       } catch (initErr) {

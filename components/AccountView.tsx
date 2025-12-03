@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Wallet, Edit2, Trash2, ArrowRightLeft, CheckCircle2, AlertTriangle, Save, CreditCard, TrendingUp, Star, ShieldCheck } from 'lucide-react';
+import { PlusCircle, Wallet, Edit2, Trash2, ArrowRightLeft, CheckCircle2, AlertTriangle, Save, CreditCard, TrendingUp, Star, ShieldCheck, Wifi } from 'lucide-react';
 import { Account, Transaction, TransactionType, AccountType } from '../types';
 
 interface AccountViewProps {
@@ -283,25 +283,51 @@ const AccountView: React.FC<AccountViewProps> = ({
               </div>
             ) : (
               accounts.filter(a => a.type === AccountType.CREDIT_CARD).map(acc => (
-                <div key={acc.id} className="bg-gradient-to-br from-slate-800 to-slate-900 text-white p-6 rounded-xl shadow-lg relative overflow-hidden group">
+                <div key={acc.id} className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-6 rounded-xl shadow-lg relative overflow-hidden group transition-transform hover:scale-[1.02] duration-200">
+
+                  {/* Background Pattern */}
                   <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <CreditCard size={100} />
+                    <CreditCard size={120} />
                   </div>
-                  <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-                        <CreditCard size={24} className="text-purple-300" />
-                      </div>
+
+                  <div className="relative z-10 flex flex-col h-full justify-between min-h-[160px]">
+                    {/* Header: Bank Name & Actions */}
+                    <div className="flex justify-between items-start">
+                      <h4 className="font-bold text-lg tracking-wide">{acc.name}</h4>
                       <div className="flex gap-2">
-                        {acc.isDefault && <Star size={16} className="text-amber-400 fill-amber-400" />}
-                        <button onClick={() => handleEdit(acc)} className="text-slate-400 hover:text-white transition-colors"><Edit2 size={16} /></button>
-                        <button onClick={() => onDeleteAccount(acc.id)} className="text-slate-400 hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
+                        {acc.isDefault && <Star size={16} className="text-amber-300 fill-amber-300" />}
+                        <button onClick={() => handleEdit(acc)} className="text-white/70 hover:text-white transition-colors"><Edit2 size={16} /></button>
+                        <button onClick={() => onDeleteAccount(acc.id)} className="text-white/70 hover:text-white transition-colors"><Trash2 size={16} /></button>
                       </div>
                     </div>
-                    <h4 className="text-lg font-bold mb-1">{acc.name}</h4>
-                    <div className="flex justify-between text-xs text-slate-400 mt-4">
-                      <span>Fecha dia {acc.closingDay}</span>
-                      <span>Vence dia {acc.dueDay}</span>
+
+                    {/* Chip & NFC */}
+                    <div className="flex items-center gap-3 my-4">
+                      <div className="w-10 h-7 bg-amber-200 rounded flex items-center justify-center overflow-hidden relative shadow-sm">
+                        <div className="absolute inset-0 border border-amber-500/40 rounded"></div>
+                        <div className="w-full h-[1px] bg-amber-500/40 absolute top-1/3"></div>
+                        <div className="w-full h-[1px] bg-amber-500/40 absolute bottom-1/3"></div>
+                        <div className="h-full w-[1px] bg-amber-500/40 absolute left-1/3"></div>
+                        <div className="h-full w-[1px] bg-amber-500/40 absolute right-1/3"></div>
+                      </div>
+                      <Wifi size={20} className="rotate-90 opacity-70" />
+                    </div>
+
+                    {/* Card Number */}
+                    <p className="font-mono text-lg tracking-widest opacity-90 shadow-black/10 drop-shadow-sm">
+                      2345 XXXX XXXX XXXX
+                    </p>
+
+                    {/* Footer: Dates */}
+                    <div className="flex justify-between text-[10px] uppercase tracking-wider opacity-80 mt-2 font-medium">
+                      <div className="flex flex-col">
+                        <span>Fechamento</span>
+                        <span className="text-xs text-white">Dia {acc.closingDay}</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span>Vencimento</span>
+                        <span className="text-xs text-white">Dia {acc.dueDay}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

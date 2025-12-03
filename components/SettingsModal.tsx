@@ -36,14 +36,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     const [localNotificationDays, setLocalNotificationDays] = useState(notificationDays);
 
     // Drive Config State
-    const [clientId, setClientId] = useState(driveConfig.clientId);
     const [folderId, setFolderId] = useState(driveConfig.folderId);
     const [driveEnabled, setDriveEnabled] = useState(driveConfig.enabled);
 
     useEffect(() => {
         if (isOpen) {
             setLocalNotificationDays(notificationDays);
-            setClientId(driveConfig.clientId);
             setFolderId(driveConfig.folderId);
             setDriveEnabled(driveConfig.enabled);
         }
@@ -59,7 +57,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     const handleSaveCloud = () => {
         onSaveDriveConfig({
             enabled: driveEnabled,
-            clientId,
+            clientId: '', // Client ID is now global
             folderId
         });
         alert("Configurações de nuvem salvas!");
@@ -88,8 +86,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         <button
                             onClick={() => setActiveTab('general')}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'general'
-                                    ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                 }`}
                         >
                             <Bell size={16} /> Geral
@@ -97,8 +95,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         <button
                             onClick={() => setActiveTab('cloud')}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'cloud'
-                                    ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                 }`}
                         >
                             <Cloud size={16} /> Nuvem
@@ -106,8 +104,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         <button
                             onClick={() => setActiveTab('appearance')}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'appearance'
-                                    ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                 }`}
                         >
                             {darkMode ? <Moon size={16} /> : <Sun size={16} />} Aparência
@@ -167,7 +165,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <Cloud size={16} /> Configuração Google Drive
                                     </h4>
                                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                        Para backup automático, você precisa de um <b>Client ID</b> do Google Cloud Console.
+                                        O backup utiliza a autenticação padrão do aplicativo. Você só precisa informar a pasta de destino.
                                     </p>
                                 </div>
 
@@ -185,16 +183,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         </label>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Google Client ID</label>
-                                        <input
-                                            type="text"
-                                            value={clientId}
-                                            onChange={e => setClientId(e.target.value)}
-                                            placeholder="Ex: 12345...apps.googleusercontent.com"
-                                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-mono outline-none focus:border-blue-500 bg-white dark:bg-slate-700 dark:text-white"
-                                        />
-                                    </div>
+                                    {/* Client ID removed - using global config */}
 
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
@@ -228,7 +217,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                                 {driveStatus && (
                                     <div className={`text-xs text-center font-medium p-2 rounded ${driveStatus === 'Backup OK' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' :
-                                            (driveStatus.includes('Erro') || driveStatus.includes('Falha') ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20 dark:text-rose-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400')
+                                        (driveStatus.includes('Erro') || driveStatus.includes('Falha') ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20 dark:text-rose-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400')
                                         }`}>
                                         Status: {driveStatus}
                                     </div>
