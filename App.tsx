@@ -121,17 +121,35 @@ const App: React.FC = () => {
           // Fix timezone issue by treating date string as UTC or local noon
           const tDateLocal = new Date(tDate.getUTCFullYear(), tDate.getUTCMonth(), tDate.getUTCDate());
 
-          return tDateLocal >= today && tDateLocal <= futureDate;
+          // Include overdue (past) and upcoming (within range)
+          return tDateLocal <= futureDate;
         });
 
         if (pending.length > 0) {
+          const overdueCount = pending.filter(t => {
+            const tDate = new Date(t.date);
+            const tDateLocal = new Date(tDate.getUTCFullYear(), tDate.getUTCMonth(), tDate.getUTCDate());
+            return tDateLocal < today;
+          }).length;
+
+          const upcomingCount = pending.length - overdueCount;
+
+          let bodyMsg = '';
+          if (overdueCount > 0 && upcomingCount > 0) {
+            bodyMsg = `Você tem ${overdueCount} contas vencidas e ${upcomingCount} próximas do vencimento.`;
+          } else if (overdueCount > 0) {
+            bodyMsg = `Você tem ${overdueCount} contas vencidas.`;
+          } else {
+            bodyMsg = `Você tem ${upcomingCount} contas próximas do vencimento.`;
+          }
+
           if ("Notification" in window) {
             if (Notification.permission === "granted") {
-              new Notification("Contas a Pagar", { body: `Você tem ${pending.length} contas pendentes nos próximos ${notificationDays} dias.` });
+              new Notification("Contas a Pagar", { body: bodyMsg });
             } else if (Notification.permission !== "denied") {
               Notification.requestPermission().then(permission => {
                 if (permission === "granted") {
-                  new Notification("Contas a Pagar", { body: `Você tem ${pending.length} contas pendentes nos próximos ${notificationDays} dias.` });
+                  new Notification("Contas a Pagar", { body: bodyMsg });
                 }
               });
             }
@@ -142,7 +160,7 @@ const App: React.FC = () => {
       // Small delay to ensure UI is ready
       setTimeout(checkNotifications, 1000);
     }
-  }, [isLoading, transactions.length, notificationDays]); // Run when loading finishes
+  }, [isLoading, transactions, notificationDays]); // Run when loading finishes or transactions change
 
   const handleSaveNotificationDays = (days: number) => {
     setNotificationDays(days);
