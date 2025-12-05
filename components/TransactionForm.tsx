@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { PlusCircle, Check, Layers, Wallet, CreditCard, ArrowDownCircle, GitFork } from 'lucide-react';
+import { PlusCircle, Check, Layers, Wallet, CreditCard, ArrowDownCircle, GitFork, ArrowRightLeft } from 'lucide-react';
 import { Transaction, TransactionType, Category, Account, AccountType, TransactionSplit } from '../types';
 import TransactionSplitModal from './TransactionSplitModal';
 
@@ -9,9 +9,10 @@ interface TransactionFormProps {
   availableCategories: Category[];
   availableAccounts: Account[];
   transactions?: Transaction[]; // Needed to check closed invoices
+  onOpenTransfer: () => void;
 }
 
-const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransactions, availableCategories, availableAccounts, transactions = [] }) => {
+const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransactions, availableCategories, availableAccounts, transactions = [], onOpenTransfer }) => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -261,6 +262,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransactions, av
           <PlusCircle className="w-5 h-5 text-blue-600" />
           Nova Movimentação
         </h2>
+        <button
+          type="button"
+          onClick={onOpenTransfer}
+          className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+        >
+          <ArrowRightLeft size={16} />
+          Transferir
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

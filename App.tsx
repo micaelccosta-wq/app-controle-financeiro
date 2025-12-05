@@ -18,6 +18,7 @@ import CSVImportModal from './components/CSVImportModal';
 import BackupModal from './components/BackupModal';
 import SettingsModal from './components/SettingsModal';
 import PendingTransactionsModal from './components/PendingTransactionsModal';
+import TransferModal from './components/TransferModal';
 import { performBackupToDrive } from './services/driveService';
 import { transactionService, categoryService, accountService, budgetService, goalService, wealthConfigService, dataService } from './services/api';
 import { Transaction, Category, TransactionType, CategorySubtype, Budget, Account, AccountType, BackupData, FinancialGoal, WealthConfig, GoogleDriveConfig } from './types';
@@ -843,6 +844,154 @@ const App: React.FC = () => {
   };
 
   // Wealth handlers
+
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+
+  const handleTransfer = async (amount: number, date: string, fromAccountId: string, toAccountId: string, observations: string) => {
+    const fromAccount = accounts.find(a => a.id === fromAccountId);
+    const toAccount = accounts.find(a => a.id === toAccountId);
+
+    if (!fromAccount || !toAccount) {
+      alert("Contas não encontradas.");
+      return;
+    }
+
+    let description = "Transferência entre contas";
+    if (fromAccount.type === AccountType.BANK && toAccount.type === AccountType.INVESTMENT) {
+      description = "Aplicação";
+    } else if (fromAccount.type === AccountType.INVESTMENT && toAccount.type === AccountType.BANK) {
+      description = "Resgate";
+    }
+
+    const expenseTransaction: Transaction = {
+      id: crypto.randomUUID(),
+      description: `${description} (Saída)`,
+      amount: amount,
+      date: date,
+      category: 'Transferência', // Ensure this category exists or use a default
+      type: TransactionType.EXPENSE,
+      isApplied: true,
+      accountId: fromAccountId,
+      observations: observations ? `${observations} -> Para: ${toAccount.name}` : `Para: ${toAccount.name}`
+    };
+
+    const incomeTransaction: Transaction = {
+      id: crypto.randomUUID(),
+      description: `${description} (Entrada)`,
+      amount: amount,
+      date: date,
+      category: 'Transferência',
+      type: TransactionType.INCOME,
+      isApplied: true,
+      accountId: toAccountId,
+      observations: observations ? `${observations} <- De: ${fromAccount.name}` : `De: ${fromAccount.name}`
+    };
+
+    // Ensure 'Transferência' category exists
+    const transferCat = categories.find(c => c.name === 'Transferência');
+    if (!transferCat) {
+      try {
+        const newCat: Transaction = { // Typo in original plan, should be Category
+          id: crypto.randomUUID(),
+          name: 'Transferência',
+          type: TransactionType.EXPENSE, // Default type, but used for both
+          subtype: CategorySubtype.FIXED,
+          impactsBudget: false,
+          icon: 'arrow-right-left'
+        } as any as Category; // Cast to avoid strict type issues if interface differs slightly
+
+        await categoryService.create(newCat);
+        setCategories(prev => [...prev, newCat]);
+      } catch (e) {
+        console.error("Error creating Transfer category", e);
+      }
+    }
+
+    try {
+      await transactionService.createBatch([expenseTransaction, incomeTransaction]);
+      setTransactions(prev => [expenseTransaction, incomeTransaction, ...prev]);
+      alert("Transferência realizada com sucesso!");
+    } catch (error) {
+      console.error("Failed to perform transfer", error);
+      alert("Erro ao realizar transferência.");
+    }
+  };
+
+  // Wealth handlers
+  // Wealth handlers
+  // Transfer Logic
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+
+  const handleTransfer = async (amount: number, date: string, fromAccountId: string, toAccountId: string, observations: string) => {
+    const fromAccount = accounts.find(a => a.id === fromAccountId);
+    const toAccount = accounts.find(a => a.id === toAccountId);
+
+    if (!fromAccount || !toAccount) {
+      alert("Contas não encontradas.");
+      return;
+    }
+
+    let description = "Transferência entre contas";
+    if (fromAccount.type === AccountType.BANK && toAccount.type === AccountType.INVESTMENT) {
+      description = "Aplicação";
+    } else if (fromAccount.type === AccountType.INVESTMENT && toAccount.type === AccountType.BANK) {
+      description = "Resgate";
+    }
+
+    const expenseTransaction: Transaction = {
+      id: crypto.randomUUID(),
+      description: `${description} (Saída)`,
+      amount: amount,
+      date: date,
+      category: 'Transferência', // Ensure this category exists or use a default
+      type: TransactionType.EXPENSE,
+      isApplied: true,
+      accountId: fromAccountId,
+      observations: observations ? `${observations} -> Para: ${toAccount.name}` : `Para: ${toAccount.name}`
+    };
+
+    const incomeTransaction: Transaction = {
+      id: crypto.randomUUID(),
+      description: `${description} (Entrada)`,
+      amount: amount,
+      date: date,
+      category: 'Transferência',
+      type: TransactionType.INCOME,
+      isApplied: true,
+      accountId: toAccountId,
+      observations: observations ? `${observations} <- De: ${fromAccount.name}` : `De: ${fromAccount.name}`
+    };
+
+    // Ensure 'Transferência' category exists
+    const transferCat = categories.find(c => c.name === 'Transferência');
+    if (!transferCat) {
+      try {
+        const newCat: Category = {
+          id: crypto.randomUUID(),
+          name: 'Transferência',
+          type: TransactionType.EXPENSE, // Default type, but used for both
+          subtype: CategorySubtype.FIXED,
+          impactsBudget: false,
+          icon: 'arrow-right-left'
+        };
+
+        await categoryService.create(newCat);
+        setCategories(prev => [...prev, newCat]);
+      } catch (e) {
+        console.error("Error creating Transfer category", e);
+      }
+    }
+
+    try {
+      await transactionService.createBatch([expenseTransaction, incomeTransaction]);
+      setTransactions(prev => [expenseTransaction, incomeTransaction, ...prev]);
+      alert("Transferência realizada com sucesso!");
+    } catch (error) {
+      console.error("Failed to perform transfer", error);
+      alert("Erro ao realizar transferência.");
+    }
+  };
+
   const handleSaveGoal = async (goal: FinancialGoal) => {
     try {
       const existing = goals.find(g => g.id === goal.id);
@@ -992,6 +1141,7 @@ const App: React.FC = () => {
               availableCategories={categories}
               availableAccounts={accounts}
               transactions={transactions}
+              onOpenTransfer={() => setIsTransferModalOpen(true)}
             />
 
             <TransactionList
@@ -1183,6 +1333,13 @@ const App: React.FC = () => {
         driveStatus={driveStatus}
         darkMode={darkMode}
         onToggleDarkMode={handleToggleDarkMode}
+      />
+
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        accounts={accounts}
+        onConfirm={handleTransfer}
       />
     </div>
   );
