@@ -435,24 +435,79 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRestoreData = (backup: BackupData) => {
-    // Clear first to ensure clean state
-    setTransactions([]);
-    setAccounts([]);
-    setCategories([]);
-    setBudgets([]);
-    setGoals([]);
+  const handleRestoreData = async (backup: BackupData) => {
+    if (!confirm("ATENÇÃO: A restauração irá APAGAR todos os dados atuais e substituí-los pelo backup. Deseja continuar?")) {
+      return;
+    }
 
-    setTimeout(() => {
-      setTransactions(backup.transactions);
-      setAccounts(backup.accounts);
-      setCategories(backup.categories);
-      setBudgets(backup.budgets);
-      if (backup.goals) setGoals(backup.goals);
-      if (backup.wealthConfig) setWealthConfig(backup.wealthConfig);
-      if (backup.googleDriveConfig) setDriveConfig(backup.googleDriveConfig);
+    setIsLoading(true);
+    try {
+      // 1. Reset current data
+      await dataService.reset();
+
+      // 2. Restore data in order (dependencies first)
+      // Accounts first (needed for transactions)
+      if (backup.accounts && backup.accounts.length > 0) {
+        await accountService.createBatch(backup.accounts);
+      }
+
+      // Categories (needed for transactions)
+      if (backup.categories && backup.categories.length > 0) {
+        await categoryService.createBatch(backup.categories);
+      }
+
+      // Budgets
+      if (backup.budgets && backup.budgets.length > 0) {
+        await budgetService.createBatch(backup.budgets);
+      }
+
+      // Goals (No batch endpoint yet, so loop)
+      if (backup.goals && backup.goals.length > 0) {
+        for (const goal of backup.goals) {
+          await goalService.create(goal);
+        }
+      }
+
+      // Wealth Config
+      if (backup.wealthConfig) {
+        await wealthConfigService.update(backup.wealthConfig);
+      }
+
+      // Transactions (last because they depend on accounts/categories)
+      if (backup.transactions && backup.transactions.length > 0) {
+        await transactionService.createBatch(backup.transactions);
+      }
+
+      // Drive Config (Local only for now, or if we had a service)
+      if (backup.googleDriveConfig) {
+        handleSaveDriveConfig(backup.googleDriveConfig);
+      }
+
+      // 3. Reload all data from backend to ensure UI is in sync with DB
+      const [loadedTransactions, loadedCategories, loadedAccounts, loadedBudgets, loadedGoals, loadedWealthConfig] = await Promise.all([
+        transactionService.getAll(),
+        categoryService.getAll(),
+        accountService.getAll(),
+        budgetService.getAll(),
+        goalService.getAll(),
+        wealthConfigService.get()
+      ]);
+
+      setTransactions(loadedTransactions);
+      setCategories(loadedCategories);
+      setAccounts(loadedAccounts);
+      setBudgets(loadedBudgets);
+      setGoals(loadedGoals);
+      if (loadedWealthConfig) setWealthConfig(loadedWealthConfig);
+
       alert("Dados restaurados com sucesso!");
-    }, 100);
+
+    } catch (error) {
+      console.error("Failed to restore data", error);
+      alert("Erro ao restaurar dados. Verifique o console para mais detalhes.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDeleteTransaction = async (id: string) => {
