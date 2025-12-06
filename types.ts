@@ -1,7 +1,9 @@
 
 export enum TransactionType {
   INCOME = 'INCOME',
-  EXPENSE = 'EXPENSE'
+  EXPENSE = 'EXPENSE',
+  TRANSFER_OUT = 'TRANSFER_OUT',
+  TRANSFER_IN = 'TRANSFER_IN'
 }
 
 export enum CategorySubtype {
@@ -64,6 +66,9 @@ export interface Transaction {
   batchId?: string;
   installmentNumber?: number;
   totalInstallments?: number;
+
+  // Transfer Linking
+  relatedTransactionId?: string;
 }
 
 export interface Budget {

@@ -52,4 +52,7 @@ public class Transaction {
     private String batchId;
     private Integer installmentNumber;
     private Integer totalInstallments;
+
+    // Transfer Linking
+    private String relatedTransactionId;
 }

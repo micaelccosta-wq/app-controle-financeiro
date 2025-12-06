@@ -13,6 +13,7 @@ interface TransactionFormProps {
 }
 
 const TransactionForm: React.FC<TransactionFormProps> = ({ onAddTransactions, availableCategories, availableAccounts, transactions = [], onOpenTransfer }) => {
+  console.log('TransactionForm rendering', { onOpenTransfer });
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);

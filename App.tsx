@@ -550,734 +550,735 @@ const App: React.FC = () => {
         // Current frontend logic updates state for all. 
         // Let's stick to updating the single one for API to avoid complexity, 
         // or loop update if we really want to support batch edit.
-        // Given the plan, let's update just the single one to ensure stability first.
+        const handleSaveEditedTransaction = async (transaction: Transaction) => {
+          try {
+            // Check if it's a transfer and has a related transaction
+            if ((transaction.type === TransactionType.TRANSFER_OUT || transaction.type === TransactionType.TRANSFER_IN) && transaction.relatedTransactionId) {
+              const relatedTx = transactions.find(t => t.id === transaction.relatedTransactionId);
+              if (relatedTx) {
+                // Sync amount and date
+                const updatedRelatedTx = {
+                  ...relatedTx,
+                  amount: transaction.amount,
+                  date: transaction.date
+                };
+                await transactionService.updateBatch([transaction, updatedRelatedTx]);
+                setTransactions(prev => prev.map(t => {
+                  if (t.id === transaction.id) return transaction;
+                  if (t.id === updatedRelatedTx.id) return updatedRelatedTx;
+                  return t;
+                }));
+                setEditingTransaction(null);
+                return;
+              }
+            }
 
-        const saved = await transactionService.update(updated);
-        setTransactions(prev => prev.map(t => t.id === saved.id ? saved : t));
+            // Normal update
+            const updated = await transactionService.update(transaction);
+            setTransactions(prev => prev.map(t => t.id === transaction.id ? updated : t));
+            setEditingTransaction(null);
+          } catch (error) {
+            console.error("Failed to update transaction", error);
+            alert("Erro ao atualizar movimentação.");
+          }
+        };
 
-        // TODO: Implement batch update in backend for full feature parity
-      } else {
-        const saved = await transactionService.update(updated);
-        setTransactions(prev => prev.map(t => t.id === saved.id ? saved : t));
-      }
-    } catch (error) {
-      console.error("Failed to update transaction", error);
-      alert("Erro ao atualizar transação.");
-    }
-  };
+        const handleToggleSelection = (id: string) => {
+          setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+          );
+        };
 
-  const handleToggleSelection = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-    );
-  };
+        const handleSelectAll = (explicitIds?: string[]) => {
+          if (explicitIds) {
+            setSelectedIds(explicitIds);
+          } else {
+            // Fallback standard behavior
+            if (selectedIds.length === transactions.length && transactions.length > 0) {
+              setSelectedIds([]);
+            } else {
+              setSelectedIds(transactions.map(t => t.id));
+            }
+          }
+        };
 
-  const handleSelectAll = (explicitIds?: string[]) => {
-    if (explicitIds) {
-      setSelectedIds(explicitIds);
-    } else {
-      // Fallback standard behavior
-      if (selectedIds.length === transactions.length && transactions.length > 0) {
-        setSelectedIds([]);
-      } else {
-        setSelectedIds(transactions.map(t => t.id));
-      }
-    }
-  };
+        const handleBulkStatusChange = async () => {
+          try {
+            const transactionsToUpdate = transactions.filter(t => selectedIds.includes(t.id));
+            const updatedTransactions = transactionsToUpdate.map(t => ({ ...t, isApplied: !t.isApplied }));
 
-  const handleBulkStatusChange = async () => {
-    try {
-      const transactionsToUpdate = transactions.filter(t => selectedIds.includes(t.id));
-      const updatedTransactions = transactionsToUpdate.map(t => ({ ...t, isApplied: !t.isApplied }));
+            await transactionService.updateBatch(updatedTransactions);
 
-      await transactionService.updateBatch(updatedTransactions);
+            setTransactions(prev => prev.map(t => {
+              if (selectedIds.includes(t.id)) {
+                return { ...t, isApplied: !t.isApplied };
+              }
+              return t;
+            }));
+            setSelectedIds([]);
+          } catch (error) {
+            console.error("Failed to bulk update status", error);
+            alert("Erro ao atualizar status.");
+          }
+        };
 
-      setTransactions(prev => prev.map(t => {
-        if (selectedIds.includes(t.id)) {
-          return { ...t, isApplied: !t.isApplied };
+        const handleBulkDeleteTransactions = async (ids: string[]) => {
+          if (!confirm(`Tem certeza que deseja excluir ${ids.length} movimentações?`)) return;
+
+          try {
+            await transactionService.deleteBatch(ids);
+            setTransactions(prev => prev.filter(t => !ids.includes(t.id)));
+            setSelectedIds([]);
+          } catch (error) {
+            console.error("Failed to bulk delete transactions", error);
+            alert("Erro ao excluir movimentações em lote.");
+          }
+        };
+
+        // Category Logic
+        const handleSaveCategory = async (category: Category) => {
+          try {
+            const exists = categories.find(c => c.id === category.id);
+            let saved: Category;
+            if (exists) {
+              saved = await categoryService.update(category);
+              setCategories(prev => prev.map(c => c.id === category.id ? saved : c));
+            } else {
+              saved = await categoryService.create(category);
+              setCategories(prev => [...prev, saved]);
+            }
+            setEditingCategory(null);
+          } catch (error) {
+            console.error("Failed to save category", error);
+            alert("Erro ao salvar categoria.");
+          }
+        };
+
+        const handleEditCategoryStart = (category: Category) => {
+          setEditingCategory(category);
+        };
+
+        const handleDeleteCategory = async (id: string) => {
+          const isUsed = transactions.some(t => {
+            const catName = categories.find(c => c.id === id)?.name;
+            return t.category === catName;
+          });
+          if (isUsed) {
+            alert("Não é possível excluir esta categoria pois ela possui transações vinculadas.");
+            return;
+          }
+          try {
+            await categoryService.delete(id);
+            setCategories((prev) => prev.filter((c) => c.id !== id));
+          } catch (error) {
+            console.error("Failed to delete category", error);
+            alert("Erro ao excluir categoria.");
+          }
+        };
+
+        // Budget Logic
+        const handleSaveBudget = async (budget: Budget) => {
+          try {
+            const existing = budgets.find(b => b.id === budget.id);
+            let saved: Budget;
+            if (existing) {
+              saved = await budgetService.update(budget);
+              setBudgets(prev => {
+                const idx = prev.findIndex(b => b.id === budget.id);
+                const updated = [...prev];
+                updated[idx] = saved;
+                return updated;
+              });
+            } else {
+              saved = await budgetService.create(budget);
+              setBudgets(prev => [...prev, saved]);
+            }
+          } catch (error) {
+            console.error("Failed to save budget", error);
+            alert("Erro ao salvar orçamento.");
+          }
+        };
+
+        const handleSaveBulkBudgets = async (newBudgets: Budget[]) => {
+          try {
+            await budgetService.createBatch(newBudgets);
+            // Refetch all budgets to ensure sync with DB
+            const allBudgets = await budgetService.getAll();
+            setBudgets(allBudgets);
+          } catch (error) {
+            console.error("Failed to save budgets", error);
+            alert("Erro ao salvar orçamentos.");
+          }
+        };
+
+        const handleOpenBudgetGenerator = (categoryIds?: string[]) => {
+          setBudgetGeneratorCategoryIds(categoryIds);
+          setIsBudgetGeneratorOpen(true);
+        };
+
+        const handleAddAccount = async (account: Account) => {
+          try {
+            const saved = await accountService.create(account);
+            setAccounts(prev => [...prev, saved]);
+          } catch (error) {
+            console.error("Failed to add account", error);
+            alert("Erro ao adicionar conta.");
+          }
+        };
+
+        const handleUpdateAccount = async (updatedAccount: Account) => {
+          try {
+            const saved = await accountService.update(updatedAccount);
+            setAccounts(prev => prev.map(a => a.id === saved.id ? saved : a));
+          } catch (error) {
+            console.error("Failed to update account", error);
+            alert("Erro ao atualizar conta.");
+          }
+        };
+
+        const handleDeleteAccount = async (id: string) => {
+          if (transactions.some(t => t.accountId === id)) {
+            alert("Não é possível excluir esta conta pois existem movimentações vinculadas.");
+            return;
+          }
+          try {
+            await accountService.delete(id);
+            setAccounts(prev => prev.filter(a => a.id !== id));
+          } catch (error) {
+            console.error("Failed to delete account", error);
+            alert("Erro ao excluir conta.");
+          }
+        };
+
+        const handleAddAdjustmentTransaction = async (transaction: Transaction) => {
+          const rendimentosCat = categories.find(c => c.name === 'Rendimentos');
+          if (!rendimentosCat) {
+            // Create category if not exists
+            try {
+              const newCat: Category = {
+                id: crypto.randomUUID(),
+                name: 'Rendimentos',
+                type: TransactionType.INCOME,
+                subtype: CategorySubtype.VARIABLE,
+                impactsBudget: false,
+                icon: 'zap'
+              };
+              const savedCat = await categoryService.create(newCat);
+              setCategories(prev => [...prev, savedCat]);
+            } catch (e) {
+              console.error("Error creating Rendimentos category", e);
+            }
+          }
+
+          try {
+            const saved = await transactionService.create(transaction);
+            setTransactions(prev => [saved, ...prev]);
+          } catch (error) {
+            console.error("Failed to add adjustment transaction", error);
+            alert("Erro ao adicionar ajuste.");
+          }
+        };
+
+        const handleCloseInvoice = async (total: number, date: string, accountId: string, invoiceName: string) => {
+          // Format amount to 2 decimals
+          const amount = parseFloat(total.toFixed(2));
+
+          const transaction: Transaction = {
+            id: crypto.randomUUID(),
+            description: invoiceName,
+            amount: amount,
+            date: date,
+            category: 'Pagamento Fatura', // Could be dynamic
+            type: TransactionType.EXPENSE,
+            isApplied: false, // Start as pending
+            observations: 'Gerado automaticamente pelo fechamento de fatura',
+            accountId: undefined // User must choose which BANK account to pay from later
+          };
+
+          // Check if category exists
+          if (!categories.find(c => c.name === 'Pagamento Fatura')) {
+            try {
+              const newCat: Category = {
+                id: crypto.randomUUID(),
+                name: 'Pagamento Fatura',
+                type: TransactionType.EXPENSE,
+                subtype: CategorySubtype.FIXED,
+                impactsBudget: true,
+                icon: 'credit-card'
+              };
+              const savedCat = await categoryService.create(newCat);
+              setCategories(prev => [...prev, savedCat]);
+            } catch (e) {
+              console.error("Error creating Pagamento Fatura category", e);
+            }
+          }
+
+          try {
+            const saved = await transactionService.create(transaction);
+            setTransactions(prev => [saved, ...prev]);
+            alert('Fatura fechada! Uma despesa foi agendada para o vencimento.');
+            setActiveTab('transactions'); // Go to list
+          } catch (error) {
+            console.error("Failed to close invoice", error);
+            alert("Erro ao fechar fatura.");
+          }
+        };
+
+        const handleToggleTransactionStatus = async (transaction: Transaction) => {
+          try {
+            const updated = await transactionService.update({ ...transaction, isApplied: !transaction.isApplied });
+            setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
+          } catch (error) {
+            console.error("Failed to toggle status", error);
+            alert("Erro ao alterar status.");
+          }
+        };
+
+        const handleReopenInvoice = async (invoiceName: string) => {
+          // Strategy 1: Exact match on Description + Category
+          let paymentTransaction = transactions.find(t =>
+            t.description.trim().toLowerCase() === invoiceName.trim().toLowerCase() &&
+            t.category === 'Pagamento Fatura'
+          );
+
+          // Strategy 2: Fuzzy match
+          if (!paymentTransaction) {
+            const parts = invoiceName.split(' - ');
+            if (parts.length >= 2) {
+              const cardNamePart = parts[0].replace('Fatura', '').trim().toLowerCase();
+              const datePart = parts[1].trim();
+
+              paymentTransaction = transactions.find(t =>
+                t.category === 'Pagamento Fatura' &&
+                t.description.toLowerCase().includes(cardNamePart) &&
+                t.description.includes(datePart)
+              );
+            }
+          }
+
+          if (paymentTransaction) {
+            try {
+              await transactionService.delete(paymentTransaction.id);
+              setTransactions(prev => prev.filter(t => t.id !== paymentTransaction!.id));
+              alert("Fatura reaberta e agendamento de pagamento removido.");
+            } catch (error) {
+              console.error("Failed to reopen invoice", error);
+              alert("Erro ao reabrir fatura.");
+            }
+          } else {
+            alert("Não foi possível encontrar o lançamento de pagamento desta fatura para reabertura. Verifique se ele foi excluído manualmente.");
+          }
+        };
+
+        // Wealth handlers
+
+        const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+
+        const handleTransfer = async (amount: number, date: string, fromAccountId: string, toAccountId: string, observations: string) => {
+          const fromAccount = accounts.find(a => a.id === fromAccountId);
+          const toAccount = accounts.find(a => a.id === toAccountId);
+
+          if (!fromAccount || !toAccount) {
+            alert("Contas não encontradas.");
+            return;
+          }
+
+          let description = "Transferência entre contas";
+          if (fromAccount.type === AccountType.BANK && toAccount.type === AccountType.INVESTMENT) {
+            description = "Aplicação";
+          } else if (fromAccount.type === AccountType.INVESTMENT && toAccount.type === AccountType.BANK) {
+            description = "Resgate";
+          }
+
+          const expenseId = crypto.randomUUID();
+          const incomeId = crypto.randomUUID();
+
+          const expenseTransaction: Transaction = {
+            id: expenseId,
+            description: `${description} (Saída)`,
+            amount: amount,
+            date: date,
+            category: '', // No category for transfers
+            type: TransactionType.TRANSFER_OUT,
+            isApplied: true,
+            accountId: fromAccountId,
+            observations: observations ? `${observations} -> Para: ${toAccount.name}` : `Para: ${toAccount.name}`,
+            relatedTransactionId: incomeId
+          };
+
+          const incomeTransaction: Transaction = {
+            id: incomeId,
+            description: `${description} (Entrada)`,
+            amount: amount,
+            date: date,
+            category: '', // No category for transfers
+            type: TransactionType.TRANSFER_IN,
+            isApplied: true,
+            accountId: toAccountId,
+            observations: observations ? `${observations} <- De: ${fromAccount.name}` : `De: ${fromAccount.name}`,
+            relatedTransactionId: expenseId
+          };
+
+          try {
+            await transactionService.createBatch([expenseTransaction, incomeTransaction]);
+            setTransactions(prev => [expenseTransaction, incomeTransaction, ...prev]);
+            alert("Transferência realizada com sucesso!");
+          } catch (error) {
+            console.error("Failed to perform transfer", error);
+            alert("Erro ao realizar transferência.");
+          }
+        };
+
+        const handleSaveGoal = async (goal: FinancialGoal) => {
+          try {
+            const existing = goals.find(g => g.id === goal.id);
+            let saved: FinancialGoal;
+            if (existing) {
+              saved = await goalService.update(goal);
+              setGoals(prev => prev.map(g => g.id === goal.id ? saved : g));
+            } else {
+              saved = await goalService.create(goal);
+              setGoals(prev => [...prev, saved]);
+            }
+          } catch (error) {
+            console.error("Failed to save goal", error);
+            alert("Erro ao salvar meta.");
+          }
+        };
+
+        const handleDeleteGoal = async (id: string) => {
+          try {
+            await goalService.delete(id);
+            setGoals(prev => prev.filter(g => g.id !== id));
+          } catch (error) {
+            console.error("Failed to delete goal", error);
+            alert("Erro ao excluir meta.");
+          }
+        };
+
+        const handleSaveWealthConfig = async (config: WealthConfig) => {
+          try {
+            const saved = await wealthConfigService.update(config);
+            setWealthConfig(saved);
+          } catch (error) {
+            console.error("Failed to save wealth config", error);
+            alert("Erro ao salvar configuração.");
+          }
+        };
+
+
+
+        if (isLoading) {
+          return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+                <p className="text-slate-600 font-medium">Carregando suas finanças...</p>
+              </div>
+            </div>
+          );
         }
-        return t;
-      }));
-      setSelectedIds([]);
-    } catch (error) {
-      console.error("Failed to bulk update status", error);
-      alert("Erro ao atualizar status.");
-    }
-  };
 
-  const handleBulkDeleteTransactions = async (ids: string[]) => {
-    if (!confirm(`Tem certeza que deseja excluir ${ids.length} movimentações?`)) return;
-
-    try {
-      await transactionService.deleteBatch(ids);
-      setTransactions(prev => prev.filter(t => !ids.includes(t.id)));
-      setSelectedIds([]);
-    } catch (error) {
-      console.error("Failed to bulk delete transactions", error);
-      alert("Erro ao excluir movimentações em lote.");
-    }
-  };
-
-  // Category Logic
-  const handleSaveCategory = async (category: Category) => {
-    try {
-      const exists = categories.find(c => c.id === category.id);
-      let saved: Category;
-      if (exists) {
-        saved = await categoryService.update(category);
-        setCategories(prev => prev.map(c => c.id === category.id ? saved : c));
-      } else {
-        saved = await categoryService.create(category);
-        setCategories(prev => [...prev, saved]);
-      }
-      setEditingCategory(null);
-    } catch (error) {
-      console.error("Failed to save category", error);
-      alert("Erro ao salvar categoria.");
-    }
-  };
-
-  const handleEditCategoryStart = (category: Category) => {
-    setEditingCategory(category);
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    const isUsed = transactions.some(t => {
-      const catName = categories.find(c => c.id === id)?.name;
-      return t.category === catName;
-    });
-    if (isUsed) {
-      alert("Não é possível excluir esta categoria pois ela possui transações vinculadas.");
-      return;
-    }
-    try {
-      await categoryService.delete(id);
-      setCategories((prev) => prev.filter((c) => c.id !== id));
-    } catch (error) {
-      console.error("Failed to delete category", error);
-      alert("Erro ao excluir categoria.");
-    }
-  };
-
-  // Budget Logic
-  const handleSaveBudget = async (budget: Budget) => {
-    try {
-      const existing = budgets.find(b => b.id === budget.id);
-      let saved: Budget;
-      if (existing) {
-        saved = await budgetService.update(budget);
-        setBudgets(prev => {
-          const idx = prev.findIndex(b => b.id === budget.id);
-          const updated = [...prev];
-          updated[idx] = saved;
-          return updated;
-        });
-      } else {
-        saved = await budgetService.create(budget);
-        setBudgets(prev => [...prev, saved]);
-      }
-    } catch (error) {
-      console.error("Failed to save budget", error);
-      alert("Erro ao salvar orçamento.");
-    }
-  };
-
-  const handleSaveBulkBudgets = async (newBudgets: Budget[]) => {
-    try {
-      await budgetService.createBatch(newBudgets);
-      // Refetch all budgets to ensure sync with DB
-      const allBudgets = await budgetService.getAll();
-      setBudgets(allBudgets);
-    } catch (error) {
-      console.error("Failed to save budgets", error);
-      alert("Erro ao salvar orçamentos.");
-    }
-  };
-
-  const handleOpenBudgetGenerator = (categoryIds?: string[]) => {
-    setBudgetGeneratorCategoryIds(categoryIds);
-    setIsBudgetGeneratorOpen(true);
-  };
-
-  const handleAddAccount = async (account: Account) => {
-    try {
-      const saved = await accountService.create(account);
-      setAccounts(prev => [...prev, saved]);
-    } catch (error) {
-      console.error("Failed to add account", error);
-      alert("Erro ao adicionar conta.");
-    }
-  };
-
-  const handleUpdateAccount = async (updatedAccount: Account) => {
-    try {
-      const saved = await accountService.update(updatedAccount);
-      setAccounts(prev => prev.map(a => a.id === saved.id ? saved : a));
-    } catch (error) {
-      console.error("Failed to update account", error);
-      alert("Erro ao atualizar conta.");
-    }
-  };
-
-  const handleDeleteAccount = async (id: string) => {
-    if (transactions.some(t => t.accountId === id)) {
-      alert("Não é possível excluir esta conta pois existem movimentações vinculadas.");
-      return;
-    }
-    try {
-      await accountService.delete(id);
-      setAccounts(prev => prev.filter(a => a.id !== id));
-    } catch (error) {
-      console.error("Failed to delete account", error);
-      alert("Erro ao excluir conta.");
-    }
-  };
-
-  const handleAddAdjustmentTransaction = async (transaction: Transaction) => {
-    const rendimentosCat = categories.find(c => c.name === 'Rendimentos');
-    if (!rendimentosCat) {
-      // Create category if not exists
-      try {
-        const newCat: Category = {
-          id: crypto.randomUUID(),
-          name: 'Rendimentos',
-          type: TransactionType.INCOME,
-          subtype: CategorySubtype.VARIABLE,
-          impactsBudget: false,
-          icon: 'zap'
-        };
-        const savedCat = await categoryService.create(newCat);
-        setCategories(prev => [...prev, savedCat]);
-      } catch (e) {
-        console.error("Error creating Rendimentos category", e);
-      }
-    }
-
-    try {
-      const saved = await transactionService.create(transaction);
-      setTransactions(prev => [saved, ...prev]);
-    } catch (error) {
-      console.error("Failed to add adjustment transaction", error);
-      alert("Erro ao adicionar ajuste.");
-    }
-  };
-
-  const handleCloseInvoice = async (total: number, date: string, accountId: string, invoiceName: string) => {
-    // Format amount to 2 decimals
-    const amount = parseFloat(total.toFixed(2));
-
-    const transaction: Transaction = {
-      id: crypto.randomUUID(),
-      description: invoiceName,
-      amount: amount,
-      date: date,
-      category: 'Pagamento Fatura', // Could be dynamic
-      type: TransactionType.EXPENSE,
-      isApplied: false, // Start as pending
-      observations: 'Gerado automaticamente pelo fechamento de fatura',
-      accountId: undefined // User must choose which BANK account to pay from later
-    };
-
-    // Check if category exists
-    if (!categories.find(c => c.name === 'Pagamento Fatura')) {
-      try {
-        const newCat: Category = {
-          id: crypto.randomUUID(),
-          name: 'Pagamento Fatura',
-          type: TransactionType.EXPENSE,
-          subtype: CategorySubtype.FIXED,
-          impactsBudget: true,
-          icon: 'credit-card'
-        };
-        const savedCat = await categoryService.create(newCat);
-        setCategories(prev => [...prev, savedCat]);
-      } catch (e) {
-        console.error("Error creating Pagamento Fatura category", e);
-      }
-    }
-
-    try {
-      const saved = await transactionService.create(transaction);
-      setTransactions(prev => [saved, ...prev]);
-      alert('Fatura fechada! Uma despesa foi agendada para o vencimento.');
-      setActiveTab('transactions'); // Go to list
-    } catch (error) {
-      console.error("Failed to close invoice", error);
-      alert("Erro ao fechar fatura.");
-    }
-  };
-
-  const handleToggleTransactionStatus = async (transaction: Transaction) => {
-    try {
-      const updated = await transactionService.update({ ...transaction, isApplied: !transaction.isApplied });
-      setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
-    } catch (error) {
-      console.error("Failed to toggle status", error);
-      alert("Erro ao alterar status.");
-    }
-  };
-
-  const handleReopenInvoice = async (invoiceName: string) => {
-    // Strategy 1: Exact match on Description + Category
-    let paymentTransaction = transactions.find(t =>
-      t.description.trim().toLowerCase() === invoiceName.trim().toLowerCase() &&
-      t.category === 'Pagamento Fatura'
-    );
-
-    // Strategy 2: Fuzzy match
-    if (!paymentTransaction) {
-      const parts = invoiceName.split(' - ');
-      if (parts.length >= 2) {
-        const cardNamePart = parts[0].replace('Fatura', '').trim().toLowerCase();
-        const datePart = parts[1].trim();
-
-        paymentTransaction = transactions.find(t =>
-          t.category === 'Pagamento Fatura' &&
-          t.description.toLowerCase().includes(cardNamePart) &&
-          t.description.includes(datePart)
-        );
-      }
-    }
-
-    if (paymentTransaction) {
-      try {
-        await transactionService.delete(paymentTransaction.id);
-        setTransactions(prev => prev.filter(t => t.id !== paymentTransaction!.id));
-        alert("Fatura reaberta e agendamento de pagamento removido.");
-      } catch (error) {
-        console.error("Failed to reopen invoice", error);
-        alert("Erro ao reabrir fatura.");
-      }
-    } else {
-      alert("Não foi possível encontrar o lançamento de pagamento desta fatura para reabertura. Verifique se ele foi excluído manualmente.");
-    }
-  };
-
-  // Wealth handlers
-
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-
-  const handleTransfer = async (amount: number, date: string, fromAccountId: string, toAccountId: string, observations: string) => {
-    const fromAccount = accounts.find(a => a.id === fromAccountId);
-    const toAccount = accounts.find(a => a.id === toAccountId);
-
-    if (!fromAccount || !toAccount) {
-      alert("Contas não encontradas.");
-      return;
-    }
-
-    let description = "Transferência entre contas";
-    if (fromAccount.type === AccountType.BANK && toAccount.type === AccountType.INVESTMENT) {
-      description = "Aplicação";
-    } else if (fromAccount.type === AccountType.INVESTMENT && toAccount.type === AccountType.BANK) {
-      description = "Resgate";
-    }
-
-    const expenseTransaction: Transaction = {
-      id: crypto.randomUUID(),
-      description: `${description} (Saída)`,
-      amount: amount,
-      date: date,
-      category: 'Transferência', // Ensure this category exists or use a default
-      type: TransactionType.EXPENSE,
-      isApplied: true,
-      accountId: fromAccountId,
-      observations: observations ? `${observations} -> Para: ${toAccount.name}` : `Para: ${toAccount.name}`
-    };
-
-    const incomeTransaction: Transaction = {
-      id: crypto.randomUUID(),
-      description: `${description} (Entrada)`,
-      amount: amount,
-      date: date,
-      category: 'Transferência',
-      type: TransactionType.INCOME,
-      isApplied: true,
-      accountId: toAccountId,
-      observations: observations ? `${observations} <- De: ${fromAccount.name}` : `De: ${fromAccount.name}`
-    };
-
-    // Ensure 'Transferência' category exists
-    const transferCat = categories.find(c => c.name === 'Transferência');
-    if (!transferCat) {
-      try {
-        const newCat: Category = {
-          id: crypto.randomUUID(),
-          name: 'Transferência',
-          type: TransactionType.EXPENSE, // Default type, but used for both
-          subtype: CategorySubtype.FIXED,
-          impactsBudget: false,
-          icon: 'arrow-right-left'
-        };
-
-        await categoryService.create(newCat);
-        setCategories(prev => [...prev, newCat]);
-      } catch (e) {
-        console.error("Error creating Transfer category", e);
-      }
-    }
-
-    try {
-      await transactionService.createBatch([expenseTransaction, incomeTransaction]);
-      setTransactions(prev => [expenseTransaction, incomeTransaction, ...prev]);
-      alert("Transferência realizada com sucesso!");
-    } catch (error) {
-      console.error("Failed to perform transfer", error);
-      alert("Erro ao realizar transferência.");
-    }
-  };
-
-  const handleSaveGoal = async (goal: FinancialGoal) => {
-    try {
-      const existing = goals.find(g => g.id === goal.id);
-      let saved: FinancialGoal;
-      if (existing) {
-        saved = await goalService.update(goal);
-        setGoals(prev => prev.map(g => g.id === goal.id ? saved : g));
-      } else {
-        saved = await goalService.create(goal);
-        setGoals(prev => [...prev, saved]);
-      }
-    } catch (error) {
-      console.error("Failed to save goal", error);
-      alert("Erro ao salvar meta.");
-    }
-  };
-
-  const handleDeleteGoal = async (id: string) => {
-    try {
-      await goalService.delete(id);
-      setGoals(prev => prev.filter(g => g.id !== id));
-    } catch (error) {
-      console.error("Failed to delete goal", error);
-      alert("Erro ao excluir meta.");
-    }
-  };
-
-  const handleSaveWealthConfig = async (config: WealthConfig) => {
-    try {
-      const saved = await wealthConfigService.update(config);
-      setWealthConfig(saved);
-    } catch (error) {
-      console.error("Failed to save wealth config", error);
-      alert("Erro ao salvar configuração.");
-    }
-  };
-
-
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-          <p className="text-slate-600 font-medium">Carregando suas finanças...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-      <Header
-        onReset={() => setIsBackupModalOpen(true)}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
-      />
-
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Entradas (Realizadas)</p>
-            <p className="text-xl font-bold text-emerald-600 tracking-tight">
-              {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              + {futureIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} pendentes
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saídas (Realizadas)</p>
-            <p className="text-xl font-bold text-rose-600 tracking-tight">
-              {totalExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              + {futureExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} pendentes
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saldo Líquido</p>
-            <p className={`text-xl font-bold tracking-tight ${balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saldo Real (c/ Inicial)</p>
-            <p className={`text-xl font-bold tracking-tight ${balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0) >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {(balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </p>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex space-x-1 rounded-xl bg-slate-200 dark:bg-slate-800 p-1 mb-6 overflow-x-auto no-scrollbar">
-          {[
-            { id: 'transactions', label: 'Movimentações', icon: LayoutDashboard, color: 'text-blue-700', darkColor: 'dark:text-blue-400' },
-            { id: 'cards', label: 'Cartões', icon: CreditCard, color: 'text-pink-700', darkColor: 'dark:text-pink-400' },
-            { id: 'accounts', label: 'Contas', icon: Landmark, color: 'text-indigo-700', darkColor: 'dark:text-indigo-400' },
-            { id: 'categories', label: 'Categorias', icon: Tags, color: 'text-purple-700', darkColor: 'dark:text-purple-400' },
-            { id: 'budget', label: 'Orçamento', icon: PieChart, color: 'text-amber-700', darkColor: 'dark:text-amber-400' },
-            { id: 'wealth', label: 'Patrimônio', icon: TrendingUp, color: 'text-indigo-600', darkColor: 'dark:text-indigo-400' },
-            { id: 'reports', label: 'Relatórios', icon: BarChart3, color: 'text-teal-700', darkColor: 'dark:text-teal-400' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4 ${activeTab === tab.id ? `bg-white dark:bg-slate-700 shadow ${tab.color} ${tab.darkColor}` : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-            >
-              <tab.icon size={18} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content Area */}
-        {activeTab === 'transactions' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <FinancialCalendar
-              transactions={transactions}
-              accounts={accounts}
-              onToggleTransactionStatus={handleToggleTransactionStatus}
-              onDeleteTransaction={handleDeleteTransaction}
-              onEditTransaction={handleEditTransactionStart}
+        return (
+          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+            <Header
+              onReset={() => setIsBackupModalOpen(true)}
+              onOpenSettings={() => setIsSettingsModalOpen(true)}
             />
 
-            <PendingTransactionsModal
-              isOpen={isPendingModalOpen}
-              onClose={() => setIsPendingModalOpen(false)}
-              transactions={transactions.filter(t => {
-                if (t.isApplied) return false;
-                if (t.type !== TransactionType.EXPENSE) return false;
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const futureDate = new Date(today);
-                futureDate.setDate(today.getDate() + notificationDays);
-                const tDate = new Date(t.date);
-                const tDateLocal = new Date(tDate.getUTCFullYear(), tDate.getUTCMonth(), tDate.getUTCDate());
-                return tDateLocal <= futureDate;
-              })}
-              onGoToTransactions={() => setActiveTab('transactions')}
-            />
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-            <TransactionForm
-              onAddTransactions={handleAddTransactions}
+              {/* Metric Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Entradas (Realizadas)</p>
+                  <p className="text-xl font-bold text-emerald-600 tracking-tight">
+                    {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    + {futureIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} pendentes
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saídas (Realizadas)</p>
+                  <p className="text-xl font-bold text-rose-600 tracking-tight">
+                    {totalExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    + {futureExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} pendentes
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saldo Líquido</p>
+                  <p className={`text-xl font-bold tracking-tight ${balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Saldo Real (c/ Inicial)</p>
+                  <p className={`text-xl font-bold tracking-tight ${balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0) >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {(balance + accounts.reduce((acc, a) => acc + (a.type === 'BANK' ? a.initialBalance : 0), 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="flex space-x-1 rounded-xl bg-slate-200 dark:bg-slate-800 p-1 mb-6 overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'transactions', label: 'Movimentações', icon: LayoutDashboard, color: 'text-blue-700', darkColor: 'dark:text-blue-400' },
+                  { id: 'cards', label: 'Cartões', icon: CreditCard, color: 'text-pink-700', darkColor: 'dark:text-pink-400' },
+                  { id: 'accounts', label: 'Contas', icon: Landmark, color: 'text-indigo-700', darkColor: 'dark:text-indigo-400' },
+                  { id: 'categories', label: 'Categorias', icon: Tags, color: 'text-purple-700', darkColor: 'dark:text-purple-400' },
+                  { id: 'budget', label: 'Orçamento', icon: PieChart, color: 'text-amber-700', darkColor: 'dark:text-amber-400' },
+                  { id: 'wealth', label: 'Patrimônio', icon: TrendingUp, color: 'text-indigo-600', darkColor: 'dark:text-indigo-400' },
+                  { id: 'reports', label: 'Relatórios', icon: BarChart3, color: 'text-teal-700', darkColor: 'dark:text-teal-400' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex-1 rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center gap-2 transition-all whitespace-nowrap px-4 ${activeTab === tab.id ? `bg-white dark:bg-slate-700 shadow ${tab.color} ${tab.darkColor}` : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                  >
+                    <tab.icon size={18} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Content Area */}
+              {activeTab === 'transactions' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <FinancialCalendar
+                    transactions={transactions}
+                    accounts={accounts}
+                    onToggleTransactionStatus={handleToggleTransactionStatus}
+                    onDeleteTransaction={handleDeleteTransaction}
+                    onEditTransaction={handleEditTransactionStart}
+                  />
+
+                  <PendingTransactionsModal
+                    isOpen={isPendingModalOpen}
+                    onClose={() => setIsPendingModalOpen(false)}
+                    transactions={transactions.filter(t => {
+                      if (t.isApplied) return false;
+                      if (t.type !== TransactionType.EXPENSE) return false;
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const futureDate = new Date(today);
+                      futureDate.setDate(today.getDate() + notificationDays);
+                      const tDate = new Date(t.date);
+                      const tDateLocal = new Date(tDate.getUTCFullYear(), tDate.getUTCMonth(), tDate.getUTCDate());
+                      return tDateLocal <= futureDate;
+                    })}
+                    onGoToTransactions={() => setActiveTab('transactions')}
+                  />
+
+                  <TransactionForm
+                    onAddTransactions={handleAddTransactions}
+                    availableCategories={categories}
+                    availableAccounts={accounts}
+                    transactions={transactions}
+                    onOpenTransfer={() => setIsTransferModalOpen(true)}
+                  />
+
+                  <TransactionList
+                    transactions={displayTransactions}
+                    accounts={accounts}
+                    selectedIds={selectedIds}
+                    onToggleSelection={handleToggleSelection}
+                    onSelectAll={handleSelectAll}
+                    onDelete={handleDeleteTransaction}
+                    onBulkDelete={handleBulkDeleteTransactions}
+                    onEdit={handleEditTransactionStart}
+                    onBulkStatusChange={handleBulkStatusChange}
+                    onOpenImportOFX={() => setIsOFXImportOpen(true)}
+                    onOpenImportCSV={() => setIsCSVImportOpen(true)}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'cards' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <CreditCardInvoiceView
+                    accounts={accounts}
+                    transactions={transactions}
+                    onCloseInvoice={handleCloseInvoice}
+                    onDeleteTransaction={handleDeleteTransaction}
+                    onEditTransaction={handleEditTransactionStart}
+                    onReopenInvoice={handleReopenInvoice}
+                    onBulkDelete={handleBulkDeleteTransactions}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'accounts' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <AccountView
+                    accounts={accounts}
+                    transactions={transactions}
+                    onAddAccount={handleAddAccount}
+                    onUpdateAccount={handleUpdateAccount}
+                    onDeleteAccount={handleDeleteAccount}
+                    onAddAdjustmentTransaction={handleAddAdjustmentTransaction}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'categories' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <CategoryForm
+                    onSaveCategory={handleSaveCategory}
+                    editingCategory={editingCategory}
+                    onCancelEdit={() => setEditingCategory(null)}
+                  />
+                  <CategoryList
+                    categories={categories}
+                    onDelete={handleDeleteCategory}
+                    onEdit={handleEditCategoryStart}
+                    onOpenBudgetGenerator={handleOpenBudgetGenerator}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'budget' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <BudgetView
+                    categories={categories}
+                    transactions={transactions}
+                    budgets={budgets}
+                    accounts={accounts}
+                    onSaveBudget={handleSaveBudget}
+                    onSaveBudgets={handleSaveBulkBudgets}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'wealth' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <WealthView
+                    accounts={accounts}
+                    transactions={transactions}
+                    categories={categories}
+                    goals={goals}
+                    onSaveGoal={handleSaveGoal}
+                    onDeleteGoal={handleDeleteGoal}
+                    wealthConfig={wealthConfig}
+                    onSaveWealthConfig={handleSaveWealthConfig}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'reports' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <ReportsView
+                    transactions={transactions}
+                    categories={categories}
+                    budgets={budgets}
+                  />
+                </div>
+              )}
+
+              {/* Footer with Reset Option */}
+              <div className="mt-12 py-6 border-t border-slate-200 text-center flex justify-center gap-6">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsBackupModalOpen(true)}
+                    className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 transition-colors"
+                  >
+                    <Save size={12} />
+                    Backup e Dados
+                  </button>
+                  {driveStatus && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${driveStatus === 'Backup OK' ? 'bg-emerald-50 text-emerald-600' : (driveStatus.includes('Erro') || driveStatus.includes('Falha') ? 'bg-rose-50 text-rose-500' : 'bg-slate-100 text-slate-500')}`}>
+                      {driveStatus}
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleResetData}
+                  className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors"
+                >
+                  <RotateCcw size={12} />
+                  Resetar App
+                </button>
+              </div>
+
+            </main>
+
+            {/* Edit Modal */}
+            <EditTransactionModal
+              isOpen={!!editingTransaction}
+              transaction={editingTransaction}
+              onClose={() => setEditingTransaction(null)}
+              onSave={handleSaveEditedTransaction}
               availableCategories={categories}
               availableAccounts={accounts}
-              transactions={transactions}
-              onOpenTransfer={() => setIsTransferModalOpen(true)}
             />
 
-            <TransactionList
-              transactions={displayTransactions}
-              accounts={accounts}
-              selectedIds={selectedIds}
-              onToggleSelection={handleToggleSelection}
-              onSelectAll={handleSelectAll}
-              onDelete={handleDeleteTransaction}
-              onBulkDelete={handleBulkDeleteTransactions}
-              onEdit={handleEditTransactionStart}
-              onBulkStatusChange={handleBulkStatusChange}
-              onOpenImportOFX={() => setIsOFXImportOpen(true)}
-              onOpenImportCSV={() => setIsCSVImportOpen(true)}
-            />
-          </div>
-        )}
-
-        {activeTab === 'cards' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <CreditCardInvoiceView
-              accounts={accounts}
-              transactions={transactions}
-              onCloseInvoice={handleCloseInvoice}
-              onDeleteTransaction={handleDeleteTransaction}
-              onEditTransaction={handleEditTransactionStart}
-              onReopenInvoice={handleReopenInvoice}
-              onBulkDelete={handleBulkDeleteTransactions}
-            />
-          </div>
-        )}
-
-        {activeTab === 'accounts' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <AccountView
-              accounts={accounts}
-              transactions={transactions}
-              onAddAccount={handleAddAccount}
-              onUpdateAccount={handleUpdateAccount}
-              onDeleteAccount={handleDeleteAccount}
-              onAddAdjustmentTransaction={handleAddAdjustmentTransaction}
-            />
-          </div>
-        )}
-
-        {activeTab === 'categories' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <CategoryForm
-              onSaveCategory={handleSaveCategory}
-              editingCategory={editingCategory}
-              onCancelEdit={() => setEditingCategory(null)}
-            />
-            <CategoryList
-              categories={categories}
-              onDelete={handleDeleteCategory}
-              onEdit={handleEditCategoryStart}
-              onOpenBudgetGenerator={handleOpenBudgetGenerator}
-            />
-          </div>
-        )}
-
-        {activeTab === 'budget' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <BudgetView
+            {/* Budget Generator Modal */}
+            <BudgetGeneratorModal
+              isOpen={isBudgetGeneratorOpen}
+              onClose={() => setIsBudgetGeneratorOpen(false)}
               categories={categories}
               transactions={transactions}
-              budgets={budgets}
-              accounts={accounts}
-              onSaveBudget={handleSaveBudget}
+              initialSelectedCategoryIds={budgetGeneratorCategoryIds}
               onSaveBudgets={handleSaveBulkBudgets}
             />
-          </div>
-        )}
 
-        {activeTab === 'wealth' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <WealthView
+            {/* OFX Import Modal */}
+            <OFXImportModal
+              isOpen={isOFXImportOpen}
+              onClose={() => setIsOFXImportOpen(false)}
+              onImport={handleImportSuccess}
+              availableCategories={categories}
+              availableAccounts={accounts}
+              existingTransactions={transactions}
+            />
+
+            {/* CSV Import Modal */}
+            <CSVImportModal
+              isOpen={isCSVImportOpen}
+              onClose={() => setIsCSVImportOpen(false)}
+              onImport={handleImportSuccess}
+              onImportCategories={handleImportCategories}
+              onImportAccounts={handleImportAccounts}
+              onImportBudgets={handleSaveBulkBudgets}
+              availableCategories={categories}
+              availableAccounts={accounts}
+            />
+
+            {/* Backup Modal */}
+            <BackupModal
+              isOpen={isBackupModalOpen}
+              onClose={() => setIsBackupModalOpen(false)}
+              data={{ transactions, accounts, categories, budgets, goals, wealthConfig }}
+              onRestore={handleRestoreData}
+              driveConfig={driveConfig}
+              onSaveDriveConfig={setDriveConfig}
+              onManualDriveBackup={handleManualDriveBackup}
+            />
+            {/* Settings Modal */}
+            <SettingsModal
+              isOpen={isSettingsModalOpen}
+              onClose={() => setIsSettingsModalOpen(false)}
+              notificationDays={notificationDays}
+              onSaveNotificationDays={handleSaveNotificationDays}
+              driveConfig={driveConfig}
+              onSaveDriveConfig={handleSaveDriveConfig}
+              onManualDriveBackup={handleManualDriveBackup}
+              driveStatus={driveStatus}
+              darkMode={darkMode}
+              onToggleDarkMode={handleToggleDarkMode}
+            />
+
+            <TransferModal
+              isOpen={isTransferModalOpen}
+              onClose={() => setIsTransferModalOpen(false)}
               accounts={accounts}
-              transactions={transactions}
-              categories={categories}
-              goals={goals}
-              onSaveGoal={handleSaveGoal}
-              onDeleteGoal={handleDeleteGoal}
-              wealthConfig={wealthConfig}
-              onSaveWealthConfig={handleSaveWealthConfig}
+              onConfirm={handleTransfer}
             />
-          </div>
-        )}
-
-        {activeTab === 'reports' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <ReportsView
-              transactions={transactions}
-              categories={categories}
-              budgets={budgets}
-            />
-          </div>
-        )}
-
-        {/* Footer with Reset Option */}
-        <div className="mt-12 py-6 border-t border-slate-200 text-center flex justify-center gap-6">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsBackupModalOpen(true)}
-              className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 transition-colors"
-            >
-              <Save size={12} />
-              Backup e Dados
-            </button>
-            {driveStatus && (
-              <span className={`text-[10px] px-1.5 py-0.5 rounded ${driveStatus === 'Backup OK' ? 'bg-emerald-50 text-emerald-600' : (driveStatus.includes('Erro') || driveStatus.includes('Falha') ? 'bg-rose-50 text-rose-500' : 'bg-slate-100 text-slate-500')}`}>
-                {driveStatus}
-              </span>
-            )}
-          </div>
-
-          <button
-            onClick={handleResetData}
-            className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors"
-          >
-            <RotateCcw size={12} />
-            Resetar App
-          </button>
-        </div>
-
-      </main>
-
-      {/* Edit Modal */}
-      <EditTransactionModal
-        isOpen={!!editingTransaction}
-        transaction={editingTransaction}
-        onClose={() => setEditingTransaction(null)}
-        onSave={handleSaveEditedTransaction}
-        availableCategories={categories}
-        availableAccounts={accounts}
-      />
-
-      {/* Budget Generator Modal */}
-      <BudgetGeneratorModal
-        isOpen={isBudgetGeneratorOpen}
-        onClose={() => setIsBudgetGeneratorOpen(false)}
-        categories={categories}
-        transactions={transactions}
-        initialSelectedCategoryIds={budgetGeneratorCategoryIds}
-        onSaveBudgets={handleSaveBulkBudgets}
-      />
-
-      {/* OFX Import Modal */}
-      <OFXImportModal
-        isOpen={isOFXImportOpen}
-        onClose={() => setIsOFXImportOpen(false)}
-        onImport={handleImportSuccess}
-        availableCategories={categories}
-        availableAccounts={accounts}
-        existingTransactions={transactions}
-      />
-
-      {/* CSV Import Modal */}
-      <CSVImportModal
-        isOpen={isCSVImportOpen}
-        onClose={() => setIsCSVImportOpen(false)}
-        onImport={handleImportSuccess}
-        onImportCategories={handleImportCategories}
-        onImportAccounts={handleImportAccounts}
-        onImportBudgets={handleSaveBulkBudgets}
-        availableCategories={categories}
-        availableAccounts={accounts}
-      />
-
-      {/* Backup Modal */}
-      <BackupModal
-        isOpen={isBackupModalOpen}
-        onClose={() => setIsBackupModalOpen(false)}
-        data={{ transactions, accounts, categories, budgets, goals, wealthConfig }}
-        onRestore={handleRestoreData}
-        driveConfig={driveConfig}
-        onSaveDriveConfig={setDriveConfig}
-        onManualDriveBackup={handleManualDriveBackup}
-      />
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        notificationDays={notificationDays}
-        onSaveNotificationDays={handleSaveNotificationDays}
-        driveConfig={driveConfig}
-        onSaveDriveConfig={handleSaveDriveConfig}
-        onManualDriveBackup={handleManualDriveBackup}
-        driveStatus={driveStatus}
-        darkMode={darkMode}
-        onToggleDarkMode={handleToggleDarkMode}
-      />
-
-      <TransferModal
-        isOpen={isTransferModalOpen}
-        onClose={() => setIsTransferModalOpen(false)}
-        accounts={accounts}
-        onConfirm={handleTransfer}
-      />
-    </div>
-  );
+            );
 };
 
-export default App;
+            export default App;

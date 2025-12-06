@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Transaction, TransactionType, Account, AccountType } from '../types';
-import { ArrowDownCircle, ArrowUpCircle, Calendar, Tag, CheckCircle2, Edit2, Layers, CheckSquare, Square, Wallet, Trash2, GitFork, Upload, FileText, Filter, Search, Clock } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Calendar, Tag, CheckCircle2, Edit2, Layers, CheckSquare, Square, Wallet, Trash2, GitFork, Upload, FileText, Filter, Search, Clock, ArrowRightLeft } from 'lucide-react';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -351,9 +351,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       </button>
                     </div>
 
-                    <div className={`p-2.5 rounded-full shrink-0 ${t.type === TransactionType.INCOME ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                    <div className={`p-2.5 rounded-full shrink-0 ${t.type === TransactionType.INCOME ? 'bg-emerald-50 text-emerald-600' :
+                      t.type === TransactionType.EXPENSE ? 'bg-rose-50 text-rose-600' :
+                        'bg-blue-50 text-blue-600' // Transfers
                       }`}>
-                      {t.type === TransactionType.INCOME ? <ArrowUpCircle size={24} /> : <ArrowDownCircle size={24} />}
+                      {t.type === TransactionType.INCOME ? <ArrowUpCircle size={24} /> :
+                        t.type === TransactionType.EXPENSE ? <ArrowDownCircle size={24} /> :
+                          <ArrowRightLeft size={24} /> // Transfer Icon
+                      }
                     </div>
 
                     <div>
@@ -367,15 +372,17 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       </h4>
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        <span className="flex items-center gap-1" title={hasSplit ? t.split?.map(s => `${s.categoryName}: R$ ${s.amount}`).join('\n') : ''}>
-                          <Tag size={14} />
-                          {hasSplit ? (
-                            <span className="flex items-center gap-1 bg-slate-100 px-1.5 rounded text-xs text-blue-600 border border-slate-200">
-                              <GitFork size={10} />
-                              Múltiplas
-                            </span>
-                          ) : t.category}
-                        </span>
+                        {t.category && ( // Only show category if it exists (not for transfers)
+                          <span className="flex items-center gap-1" title={hasSplit ? t.split?.map(s => `${s.categoryName}: R$ ${s.amount}`).join('\n') : ''}>
+                            <Tag size={14} />
+                            {hasSplit ? (
+                              <span className="flex items-center gap-1 bg-slate-100 px-1.5 rounded text-xs text-blue-600 border border-slate-200">
+                                <GitFork size={10} />
+                                Múltiplas
+                              </span>
+                            ) : t.category}
+                          </span>
+                        )}
                         <span className="flex items-center gap-1">
                           <Calendar size={14} />
                           {new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
@@ -398,9 +405,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   {/* Right: Value & Status & Actions */}
                   <div className="flex items-center justify-between sm:justify-end gap-4 sm:min-w-[200px]">
                     <div className="text-right">
-                      <span className={`block font-bold text-lg ${t.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-rose-600'
+                      <span className={`block font-bold text-lg ${t.type === TransactionType.INCOME || t.type === TransactionType.TRANSFER_IN ? 'text-emerald-600' :
+                        t.type === TransactionType.EXPENSE || t.type === TransactionType.TRANSFER_OUT ? 'text-rose-600' : ''
                         }`}>
-                        {t.type === TransactionType.EXPENSE ? '- ' : '+ '}
+                        {t.type === TransactionType.EXPENSE || t.type === TransactionType.TRANSFER_OUT ? '- ' : '+ '}
                         {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
 

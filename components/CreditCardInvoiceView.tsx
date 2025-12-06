@@ -23,7 +23,8 @@ const CreditCardInvoiceView: React.FC<CreditCardInvoiceViewProps> = ({
    onBulkDelete
 }) => {
    const creditCards = accounts.filter(a => a.type === AccountType.CREDIT_CARD);
-   const [selectedCardId, setSelectedCardId] = useState<string>(creditCards[0]?.id || '');
+   const defaultCard = creditCards.find(c => c.isDefault);
+   const [selectedCardId, setSelectedCardId] = useState<string>(defaultCard?.id || creditCards[0]?.id || '');
    const [selectedMonth, setSelectedMonth] = useState<string>('');
    const [searchTerm, setSearchTerm] = useState('');
    const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
