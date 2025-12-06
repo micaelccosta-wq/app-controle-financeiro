@@ -23,6 +23,10 @@ public class TransactionService {
         return transactionRepository.findAllByUserId(userContext.getCurrentUserId());
     }
 
+    public List<Transaction> findByDateRange(String startDate, String endDate) {
+        return transactionRepository.findAllByUserIdAndDateBetween(userContext.getCurrentUserId(), startDate, endDate);
+    }
+
     public Optional<Transaction> findById(String id) {
         Optional<Transaction> transaction = transactionRepository.findById(id);
         if (transaction.isPresent() && !transaction.get().getUserId().equals(userContext.getCurrentUserId())) {

@@ -69,8 +69,18 @@ const App: React.FC = () => {
     const loadData = async () => {
       try {
         setIsLoading(true);
+
+        // Calculate date range for initial load (e.g., current month)
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        const startDate = startOfMonth.toISOString().split('T')[0];
+        const endDate = endOfMonth.toISOString().split('T')[0];
+
         const [loadedTransactions, loadedCategories, loadedAccounts, loadedBudgets, loadedGoals, loadedWealthConfig] = await Promise.all([
-          transactionService.getAll(),
+          // Fetch only current month transactions initially
+          transactionService.getAll(startDate, endDate),
           categoryService.getAll(),
           accountService.getAll(),
           budgetService.getAll(),
@@ -845,81 +855,6 @@ const App: React.FC = () => {
 
   // Wealth handlers
 
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-
-  const handleTransfer = async (amount: number, date: string, fromAccountId: string, toAccountId: string, observations: string) => {
-    const fromAccount = accounts.find(a => a.id === fromAccountId);
-    const toAccount = accounts.find(a => a.id === toAccountId);
-
-    if (!fromAccount || !toAccount) {
-      alert("Contas não encontradas.");
-      return;
-    }
-
-    let description = "Transferência entre contas";
-    if (fromAccount.type === AccountType.BANK && toAccount.type === AccountType.INVESTMENT) {
-      description = "Aplicação";
-    } else if (fromAccount.type === AccountType.INVESTMENT && toAccount.type === AccountType.BANK) {
-      description = "Resgate";
-    }
-
-    const expenseTransaction: Transaction = {
-      id: crypto.randomUUID(),
-      description: `${description} (Saída)`,
-      amount: amount,
-      date: date,
-      category: 'Transferência', // Ensure this category exists or use a default
-      type: TransactionType.EXPENSE,
-      isApplied: true,
-      accountId: fromAccountId,
-      observations: observations ? `${observations} -> Para: ${toAccount.name}` : `Para: ${toAccount.name}`
-    };
-
-    const incomeTransaction: Transaction = {
-      id: crypto.randomUUID(),
-      description: `${description} (Entrada)`,
-      amount: amount,
-      date: date,
-      category: 'Transferência',
-      type: TransactionType.INCOME,
-      isApplied: true,
-      accountId: toAccountId,
-      observations: observations ? `${observations} <- De: ${fromAccount.name}` : `De: ${fromAccount.name}`
-    };
-
-    // Ensure 'Transferência' category exists
-    const transferCat = categories.find(c => c.name === 'Transferência');
-    if (!transferCat) {
-      try {
-        const newCat: Transaction = { // Typo in original plan, should be Category
-          id: crypto.randomUUID(),
-          name: 'Transferência',
-          type: TransactionType.EXPENSE, // Default type, but used for both
-          subtype: CategorySubtype.FIXED,
-          impactsBudget: false,
-          icon: 'arrow-right-left'
-        } as any as Category; // Cast to avoid strict type issues if interface differs slightly
-
-        await categoryService.create(newCat);
-        setCategories(prev => [...prev, newCat]);
-      } catch (e) {
-        console.error("Error creating Transfer category", e);
-      }
-    }
-
-    try {
-      await transactionService.createBatch([expenseTransaction, incomeTransaction]);
-      setTransactions(prev => [expenseTransaction, incomeTransaction, ...prev]);
-      alert("Transferência realizada com sucesso!");
-    } catch (error) {
-      console.error("Failed to perform transfer", error);
-      alert("Erro ao realizar transferência.");
-    }
-  };
-
-  // Wealth handlers
-  // Wealth handlers
-  // Transfer Logic
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   const handleTransfer = async (amount: number, date: string, fromAccountId: string, toAccountId: string, observations: string) => {

@@ -8,5 +8,7 @@ import org.springframework.stereotype.Repository;
 public interface TransactionRepository extends JpaRepository<Transaction, String> {
     java.util.List<Transaction> findAllByUserId(String userId);
 
+    java.util.List<Transaction> findAllByUserIdAndDateBetween(String userId, String startDate, String endDate);
+
     boolean existsByCategoryAndUserId(String category, String userId);
 }

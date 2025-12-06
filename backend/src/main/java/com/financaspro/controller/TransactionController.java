@@ -16,7 +16,12 @@ public class TransactionController {
     private TransactionService transactionService;
 
     @GetMapping
-    public List<Transaction> getAllTransactions() {
+    public List<Transaction> getAllTransactions(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        if (startDate != null && endDate != null) {
+            return transactionService.findByDateRange(startDate, endDate);
+        }
         return transactionService.findAll();
     }
 

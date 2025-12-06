@@ -20,8 +20,12 @@ api.interceptors.request.use(config => {
 });
 
 export const transactionService = {
-    getAll: async () => {
-        const response = await api.get<any[]>('/transactions');
+    getAll: async (startDate?: string, endDate?: string) => {
+        const params = new URLSearchParams();
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+
+        const response = await api.get<any[]>(`/transactions?${params.toString()}`);
         return response.data.map(t => ({
             ...t,
             isApplied: t.isApplied ?? t.applied
